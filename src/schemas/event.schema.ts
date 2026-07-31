@@ -1,0 +1,80 @@
+import { Document, Model, Schema, model } from 'mongoose';
+import { ISocialLinks } from '../models';
+
+export interface EventDocument extends Document {
+  title: string;
+  description: string;
+  additionalInfo?: string;
+  socialLinks?: ISocialLinks;
+  imageUrl: string;
+  typeIds: string[];
+  disciplineIds: string[];
+  eventDateFrom: number;
+  eventDateTo: number;
+  status: string;
+  isFree: boolean;
+  price: number;
+  creatorId: string;
+  address: string;
+  city: string;
+  latitude: number;
+  longitude: number;
+  location?: { type: string; coordinates: number[] };
+  createdAt: number;
+  updatedAt?: number;
+}
+
+const SocialLinksSchema = new Schema<ISocialLinks>(
+  {
+    instagram: { type: String, trim: true },
+    facebook: { type: String, trim: true },
+    tiktok: { type: String, trim: true },
+    youtube: { type: String, trim: true },
+    website: { type: String, trim: true },
+  },
+  { _id: false },
+);
+
+export const EventSchema = new Schema<EventDocument>(
+  {
+    title: { type: String, required: true, trim: true },
+    description: { type: String, required: true, trim: true },
+    additionalInfo: { type: String, trim: true },
+    socialLinks: { type: SocialLinksSchema },
+    imageUrl: { type: String, required: true, trim: true },
+    // An event can be more than one type (e.g. workshop then jam) and more
+    // than one dance style (e.g. Swing and Rock&Roll), so both are arrays -
+    // at least one of each is enforced at the DTO level (ArrayMinSize(1)).
+    typeIds: { type: [String], required: true },
+    disciplineIds: { type: [String], required: true },
+    eventDateFrom: { type: Number, required: true },
+    eventDateTo: { type: Number, required: true },
+    status: { type: String, required: true },
+    isFree: { type: Boolean, required: true, default: false },
+    price: { type: Number, required: true, default: 0 },
+    creatorId: { type: String, required: true },
+    address: { type: String, required: true, trim: true },
+    city: { type: String, required: true, trim: true },
+    latitude: { type: Number, required: true },
+    longitude: { type: Number, required: true },
+    location: {
+      type: { type: String, enum: ['Point'], default: 'Point' },
+      coordinates: { type: [Number], default: [0, 0] },
+    },
+    createdAt: { type: Number, default: () => Date.now() },
+    updatedAt: { type: Number },
+  },
+  {
+    collection: 'events',
+    versionKey: false,
+  },
+);
+
+EventSchema.index({ creatorId: 1 });
+EventSchema.index({ disciplineIds: 1 });
+EventSchema.index({ typeIds: 1 });
+EventSchema.index({ city: 1 });
+EventSchema.index({ eventDateFrom: 1 });
+EventSchema.index({ location: '2dsphere' });
+
+export const EventModel: Model<EventDocument> = model<EventDocument>('Event', EventSchema);

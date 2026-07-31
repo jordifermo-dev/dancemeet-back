@@ -1,0 +1,9 @@
+export { DatabaseModule } from './database.module';
+export { UserModule } from './user.module';
+export { EventModule } from './event.module';
+export { DisciplineModule } from './discipline.module';
+export { EventTypeModule } from './eventType.module';
+export { FavoriteModule } from './favorite.module';
+export { FollowersModule } from './followers.module';
+export { GeocodingModule } from './geocoding.module';
+export { UploadModule } from './upload.module';
