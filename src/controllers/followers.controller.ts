@@ -123,35 +123,4 @@ export class FollowersController {
     }
   }
 
-  @Get('count/followers/:userId')
-  async countFollowers(@Param('userId') userId: string): Promise<{ count: number }> {
-    try {
-      const count = await this.followersService.countFollowers(userId);
-      return { count };
-    } catch (err) {
-      throw err;
-    }
-  }
-
-  @Get('count/following/:followerId')
-  async countFollowing(@Param('followerId') followerId: string): Promise<{ count: number }> {
-    try {
-      const count = await this.followersService.countFollowing(followerId);
-      return { count };
-    } catch (err) {
-      throw err;
-    }
-  }
-
-  @Get('mutual/:userId1/:userId2')
-  async getMutualFollowers(
-    @Param('userId1') userId1: string,
-    @Param('userId2') userId2: string,
-  ): Promise<FollowersDto[]> {
-    try {
-      return await this.followersService.getMutualFollowers(userId1, userId2);
-    } catch (err) {
-      throw err;
-    }
-  }
 }

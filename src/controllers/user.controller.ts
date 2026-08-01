@@ -130,26 +130,6 @@ export class UserController {
     }
   }
 
-  @Get(':id/followers-count')
-  async getFollowersCount(@Param('id') userId: string): Promise<{ count: number }> {
-    try {
-      const count = await this.userService.countFollowers(userId);
-      return { count };
-    } catch (err) {
-      throw err;
-    }
-  }
-
-  @Get(':id/following-count')
-  async getFollowingCount(@Param('id') userId: string): Promise<{ count: number }> {
-    try {
-      const count = await this.userService.countFollowing(userId);
-      return { count };
-    } catch (err) {
-      throw err;
-    }
-  }
-
   @Post(':id/block/:blockedId')
   async blockUser(
     @Param('id') userId: string,

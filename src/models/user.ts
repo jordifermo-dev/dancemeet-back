@@ -25,7 +25,6 @@ export interface IUser {
   showLocation: boolean;
   createdAt: number;
   updatedAt?: number;
-  lastLoginAt?: number;
   followedId: string[];
   followingId: string[];
   blockedIds: string[];

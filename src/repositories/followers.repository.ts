@@ -96,14 +96,6 @@ export class FollowersRepository {
     });
   }
 
-  async countFollowers(userId: string): Promise<number> {
-    return this.count({ userId });
-  }
-
-  async countFollowing(followerId: string): Promise<number> {
-    return this.count({ followerId });
-  }
-
   async count(filter: FilterQuery<FollowersDocument> = {}): Promise<number> {
     return handleDbOperation(this.resourceName, 'count', async () => {
       return this.followersModel.countDocuments(filter);

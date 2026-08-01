@@ -259,28 +259,6 @@ export class UserService {
   }
 
   /**
-   * Count followers of a user
-   */
-  async countFollowers(userId: string): Promise<number> {
-    try {
-      return await this.followersRepository.countFollowers(userId);
-    } catch (err) {
-      throw err;
-    }
-  }
-
-  /**
-   * Count following of a user
-   */
-  async countFollowing(userId: string): Promise<number> {
-    try {
-      return await this.followersRepository.countFollowing(userId);
-    } catch (err) {
-      throw err;
-    }
-  }
-
-  /**
    * Block another user (one-directional - only recorded on the blocker's own document)
    */
   async blockUser(userId: string, blockedId: string): Promise<boolean> {

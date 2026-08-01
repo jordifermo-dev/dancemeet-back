@@ -47,7 +47,6 @@ export class UserDto {
   showLocation!: boolean;
   createdAt!: number;
   updatedAt?: number;
-  lastLoginAt?: number;
   followedId!: string[];
   followingId!: string[];
   blockedIds!: string[];
@@ -159,10 +158,6 @@ export class CreateUserDto {
   @IsOptional()
   @IsNumber({}, { message: msg('isNumber') })
   updatedAt?: number;
-
-  @IsOptional()
-  @IsNumber({}, { message: msg('isNumber') })
-  lastLoginAt?: number;
 }
 
 export class UpdateUserDto {
@@ -273,8 +268,4 @@ export class UpdateUserDto {
   @IsOptional()
   @IsNumber({}, { message: msg('isNumber') })
   updatedAt?: number;
-
-  @IsOptional()
-  @IsNumber({}, { message: msg('isNumber') })
-  lastLoginAt?: number;
 }

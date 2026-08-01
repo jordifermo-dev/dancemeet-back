@@ -1,6 +1,4 @@
 import 'dotenv/config';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import dns from 'node:dns';
 import mongoose from 'mongoose';
 
@@ -10,15 +8,7 @@ import mongoose from 'mongoose';
 // DNS servers here avoids ECONNREFUSED on querySrv/queryTxt regardless of the
 // machine's network config.
 dns.setServers(['1.1.1.1', '8.8.8.8']);
-import { DisciplineModel } from '../schemas/discipline.schema';
-import { EventTypeModel } from '../schemas/event-type.schema';
-import { EventModel } from '../schemas/event.schema';
-import { FavoriteModel } from '../schemas/favorite.schema';
-import { FollowersModel } from '../schemas/followers.schema';
-import { UserModel } from '../schemas/user.schema';
 import {
-  CreateDisciplineDto,
-  CreateEventTypeDto,
   DisciplineDto,
   EventTypeDto,
   EventDto,
@@ -33,11 +23,6 @@ export const EVENT_MODEL = 'EVENT_MODEL';
 export const FAVORITE_MODEL = 'FAVORITE_MODEL';
 export const FOLLOWERS_MODEL = 'FOLLOWERS_MODEL';
 export const USER_MODEL = 'USER_MODEL';
-
-interface SeedData {
-  disciplines: Array<CreateDisciplineDto>;
-  eventTypes: Array<CreateEventTypeDto>;
-}
 
 export async function connectMongoose(): Promise<typeof mongoose> {
   const uri = process.env.MONGODB_URI;
@@ -59,33 +44,6 @@ export async function connectMongoose(): Promise<typeof mongoose> {
   console.log(`✅ Mongoose connected to ${dbName}`);
   return mongoose;
 }
-
-// export async function seedReferenceData(): Promise<void> {
-//   await connectMongoose();
-
-//   const seedFilePath = path.resolve(process.cwd(), 'src/assets/help-discipline-eventype.txt');
-//   const seedData = JSON.parse(readFileSync(seedFilePath, 'utf8')) as SeedData;
-
-//   const disciplineCount = await DisciplineModel.countDocuments();
-//   if (disciplineCount === 0) {
-//     const disciplines = seedData.disciplines.map((item) => ({
-//       ...item,
-//       createdAt: item.createdAt ?? Date.now(),
-//     }));
-//     await DisciplineModel.insertMany(disciplines);
-//     console.log(`🌱 Seeded ${disciplines.length} disciplines`);
-//   }
-
-//   const eventTypeCount = await EventTypeModel.countDocuments();
-//   if (eventTypeCount === 0) {
-//     const eventTypes = seedData.eventTypes.map((item) => ({
-//       ...item,
-//       createdAt: item.createdAt ?? Date.now(),
-//     }));
-//     await EventTypeModel.insertMany(eventTypes);
-//     console.log(`🌱 Seeded ${eventTypes.length} event types`);
-//   }
-// }
 
 export function mapDisciplineToDto(document: any): DisciplineDto {
   return {
@@ -181,7 +139,6 @@ export function mapUserToDto(document: any): UserDto {
     showLocation: document.showLocation ?? false,
     createdAt: document.createdAt,
     updatedAt: document.updatedAt,
-    lastLoginAt: document.lastLoginAt,
     followedId: document.followedId ?? [],
     followingId: document.followingId ?? [],
     blockedIds: document.blockedIds ?? [],

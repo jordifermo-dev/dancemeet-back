@@ -107,17 +107,6 @@ export class EventService {
   }
 
   /**
-   * Find events by creator
-   */
-  async getEventsByCreator(creatorId: string): Promise<EventDto[]> {
-    try {
-      return await this.eventRepository.findByCreator(creatorId);
-    } catch (err) {
-      throw err;
-    }
-  }
-
-  /**
    * Find events by discipline
    */
   async getEventsByDiscipline(disciplineId: string): Promise<EventDto[]> {

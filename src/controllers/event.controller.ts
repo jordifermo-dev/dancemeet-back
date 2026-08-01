@@ -56,15 +56,6 @@ export class EventController {
     }
   }
 
-  @Get('creator/:creatorId')
-  async getEventsByCreator(@Param('creatorId') creatorId: string): Promise<EventDto[]> {
-    try {
-      return await this.eventService.getEventsByCreator(creatorId);
-    } catch (err) {
-      throw err;
-    }
-  }
-
   @Get('discipline/:disciplineId')
   async getEventsByDiscipline(@Param('disciplineId') disciplineId: string): Promise<EventDto[]> {
     try {

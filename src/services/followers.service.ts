@@ -171,45 +171,4 @@ export class FollowersService {
     }
   }
 
-  /**
-   * Count followers of a user
-   */
-  async countFollowers(userId: string): Promise<number> {
-    try {
-      return await this.followersRepository.countFollowers(userId);
-    } catch (err) {
-      throw err;
-    }
-  }
-
-  /**
-   * Count following of a user
-   */
-  async countFollowing(followerId: string): Promise<number> {
-    try {
-      return await this.followersRepository.countFollowing(followerId);
-    } catch (err) {
-      throw err;
-    }
-  }
-
-  /**
-   * Get mutual followers between two users
-   */
-  async getMutualFollowers(userId1: string, userId2: string): Promise<FollowersDto[]> {
-    try {
-      const followers1 = await this.followersRepository.findByUser(userId1);
-      const followers1Ids = followers1.map((f) => f.followerId);
-
-      const followers2 = await this.followersRepository.findByUser(userId2);
-      const followers2Ids = followers2.map((f) => f.followerId);
-
-      // Find common follower IDs
-      const mutual = followers1Ids.filter((id) => followers2Ids.includes(id));
-
-      return followers1.filter((f) => mutual.includes(f.followerId));
-    } catch (err) {
-      throw err;
-    }
-  }
 }
