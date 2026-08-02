@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AcceptLanguageResolver, I18nModule } from 'nestjs-i18n';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -15,6 +16,8 @@ import {
   FollowersModule,
   GeocodingModule,
   UploadModule,
+  NotificationModule,
+  EventReminderModule,
 } from './modules';
 import { HealthModule } from './health/health.module';
 
@@ -28,6 +31,7 @@ import { HealthModule } from './health/health.module';
       },
       resolvers: [{ use: AcceptLanguageResolver, options: { matchType: 'loose' } }],
     }),
+    ScheduleModule.forRoot(),
     DatabaseModule,
     UserModule,
     EventModule,
@@ -37,6 +41,8 @@ import { HealthModule } from './health/health.module';
     FollowersModule,
     GeocodingModule,
     UploadModule,
+    NotificationModule,
+    EventReminderModule,
     HealthModule,
   ],
   controllers: [AppController],

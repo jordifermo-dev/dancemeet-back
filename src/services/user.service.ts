@@ -272,4 +272,35 @@ export class UserService {
       throw err;
     }
   }
+
+  /**
+   * Register this device's FCM token for push notifications - additive, a
+   * user can have several tabs/devices registered at once.
+   */
+  async addFcmToken(userId: string, token: string): Promise<boolean> {
+    try {
+      const updated = await this.userRepository.addFcmToken(userId, token);
+      if (!updated) {
+        throw new ResourceNotFoundException('User', userId);
+      }
+      return true;
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  /**
+   * Unregister a device's FCM token (e.g. on logout).
+   */
+  async removeFcmToken(userId: string, token: string): Promise<boolean> {
+    try {
+      const updated = await this.userRepository.removeFcmToken(userId, token);
+      if (!updated) {
+        throw new ResourceNotFoundException('User', userId);
+      }
+      return true;
+    } catch (err) {
+      throw err;
+    }
+  }
 }

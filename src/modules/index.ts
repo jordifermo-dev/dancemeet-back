@@ -7,3 +7,5 @@ export { FavoriteModule } from './favorite.module';
 export { FollowersModule } from './followers.module';
 export { GeocodingModule } from './geocoding.module';
 export { UploadModule } from './upload.module';
+export { NotificationModule } from './notification.module';
+export { EventReminderModule } from './event-reminder.module';

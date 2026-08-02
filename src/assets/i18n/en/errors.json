@@ -5,7 +5,8 @@
     "Discipline": "discipline",
     "EventType": "event type",
     "Favorite": "favorite",
-    "Follower": "follower relationship"
+    "Follower": "follower relationship",
+    "Notification": "notification"
   },
   "fields": {
     "name": "Name",
@@ -17,7 +18,7 @@
     "latitude": "Latitude",
     "longitude": "Longitude",
     "distanceRange": "Distance range",
-    "notificationsEnabled": "Notifications enabled",
+    "disabledNotificationTypes": "Disabled notifications",
     "disciplineIds": "Disciplines",
     "eventTypeIds": "Event types",
     "statusIds": "Statuses",

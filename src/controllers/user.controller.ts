@@ -10,7 +10,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { UserService } from '../services/user.service';
-import { CreateUserDto, FollowUserDto, UpdateUserDto, UserDto } from '../dto';
+import { CreateUserDto, FcmTokenDto, FollowUserDto, UpdateUserDto, UserDto } from '../dto';
 
 @Controller('api/users')
 export class UserController {
@@ -125,6 +125,26 @@ export class UserController {
   async getFollowing(@Param('id') userId: string): Promise<FollowUserDto[]> {
     try {
       return await this.userService.getFollowingDetailed(userId);
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  @Post(':id/fcm-token')
+  async addFcmToken(@Param('id') userId: string, @Body() body: FcmTokenDto): Promise<{ success: boolean }> {
+    try {
+      const success = await this.userService.addFcmToken(userId, body.token);
+      return { success };
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  @Delete(':id/fcm-token')
+  async removeFcmToken(@Param('id') userId: string, @Body() body: FcmTokenDto): Promise<{ success: boolean }> {
+    try {
+      const success = await this.userService.removeFcmToken(userId, body.token);
+      return { success };
     } catch (err) {
       throw err;
     }

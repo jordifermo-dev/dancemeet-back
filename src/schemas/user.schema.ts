@@ -1,5 +1,6 @@
 import { Document, Model, Schema, model } from 'mongoose';
 import { ISocialLinks } from '../models';
+import { NotificationType } from './notification.schema';
 
 export interface UserDocument extends Document {
   name: string;
@@ -15,7 +16,7 @@ export interface UserDocument extends Document {
   distanceRange: number;
   eventDateFrom?: number;
   eventDateTo?: number | null;
-  notificationsEnabled: boolean;
+  disabledNotificationTypes: NotificationType[];
   disciplineIds: string[];
   eventTypeIds: string[];
   statusIds: string[];
@@ -29,6 +30,7 @@ export interface UserDocument extends Document {
   followedId: string[];
   followingId: string[];
   blockedIds: string[];
+  fcmTokens: string[];
 }
 
 const SocialLinksSchema = new Schema<ISocialLinks>(
@@ -60,7 +62,7 @@ export const UserSchema = new Schema<UserDocument>(
     distanceRange: { type: Number, required: true },
     eventDateFrom: { type: Number },
     eventDateTo: { type: Number, default: null },
-    notificationsEnabled: { type: Boolean, required: true, default: true },
+    disabledNotificationTypes: { type: [String], default: [] },
     disciplineIds: { type: [String], default: [] },
     eventTypeIds: { type: [String], default: [] },
     statusIds: { type: [String], default: [] },
@@ -74,6 +76,7 @@ export const UserSchema = new Schema<UserDocument>(
     followedId: { type: [String], default: [] },
     followingId: { type: [String], default: [] },
     blockedIds: { type: [String], default: [] },
+    fcmTokens: { type: [String], default: [] },
   },
   {
     collection: 'users',

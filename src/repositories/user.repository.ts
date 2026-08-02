@@ -153,4 +153,50 @@ export class UserRepository {
       return !!updatedDocument;
     });
   }
+
+  /** A user can have the app open in several tabs/devices at once, so tokens
+   * are additive ($addToSet dedupes) rather than a single overwritten value. */
+  async addFcmToken(userId: string, token: string): Promise<boolean> {
+    return handleDbOperation(this.resourceName, 'addFcmToken', async () => {
+      if (!isValidObjectId(userId)) {
+        throw new InvalidIdException(this.resourceName, userId);
+      }
+      const updatedDocument = await this.userModel.findByIdAndUpdate(userId, {
+        $addToSet: { fcmTokens: token },
+      });
+      return !!updatedDocument;
+    });
+  }
+
+  async removeFcmToken(userId: string, token: string): Promise<boolean> {
+    return handleDbOperation(this.resourceName, 'removeFcmToken', async () => {
+      if (!isValidObjectId(userId)) {
+        throw new InvalidIdException(this.resourceName, userId);
+      }
+      const updatedDocument = await this.userModel.findByIdAndUpdate(userId, {
+        $pull: { fcmTokens: token },
+      });
+      return !!updatedDocument;
+    });
+  }
+
+  /** Users whose saved discipline/type/status preferences overlap a given
+   * event's - same AND-across-categories semantics as EventRepository.findFiltered
+   * uses from the other direction (event matching a user's filters). */
+  async findMatchingEventPreferences(
+    disciplineIds: string[],
+    typeIds: string[],
+    status: string,
+  ): Promise<UserDto[]> {
+    return handleDbOperation(this.resourceName, 'findMatchingEventPreferences', async () => {
+      const documents = await this.userModel
+        .find({
+          disciplineIds: { $in: disciplineIds },
+          eventTypeIds: { $in: typeIds },
+          statusIds: status,
+        })
+        .lean();
+      return documents.map((document) => mapUserToDto(document));
+    });
+  }
 }

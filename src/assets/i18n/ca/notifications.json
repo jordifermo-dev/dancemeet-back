@@ -1,0 +1,14 @@
+{
+  "newFollowerTitle": "Nou seguidor",
+  "newFollowerBody": "{{name}} ha comença a seguir-te",
+  "eventAttendeeTitle": "Nou assistent",
+  "eventAttendeeBody": "{{name}} assistirà a \"{{eventTitle}}\"",
+  "eventUpdatedTitle": "Esdeveniment actualitzat",
+  "eventUpdatedBody": "L'organitzador ha modificat \"{{eventTitle}}\"",
+  "eventReminderTodayTitle": "Esdeveniment avui",
+  "eventReminderTodayBody": "\"{{eventTitle}}\" se celebra avui",
+  "followingNewEventTitle": "Nou esdeveniment",
+  "followingNewEventBody": "{{name}}, a qui segueixes, ha publicat \"{{eventTitle}}\"",
+  "preferenceNewEventTitle": "Esdeveniment per a tu",
+  "preferenceNewEventBody": "S'ha publicat \"{{eventTitle}}\", et pot interessar"
+}

@@ -1,0 +1,14 @@
+{
+  "newFollowerTitle": "New follower",
+  "newFollowerBody": "{{name}} started following you",
+  "eventAttendeeTitle": "New attendee",
+  "eventAttendeeBody": "{{name}} is attending \"{{eventTitle}}\"",
+  "eventUpdatedTitle": "Event updated",
+  "eventUpdatedBody": "The organizer updated \"{{eventTitle}}\"",
+  "eventReminderTodayTitle": "Event today",
+  "eventReminderTodayBody": "\"{{eventTitle}}\" is happening today",
+  "followingNewEventTitle": "New event",
+  "followingNewEventBody": "{{name}}, who you follow, published \"{{eventTitle}}\"",
+  "preferenceNewEventTitle": "Event for you",
+  "preferenceNewEventBody": "\"{{eventTitle}}\" was just published, you might like it"
+}

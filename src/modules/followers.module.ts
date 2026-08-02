@@ -3,19 +3,29 @@ import { Model } from 'mongoose';
 import { FollowersController } from '../controllers/followers.controller';
 import { FollowersService } from '../services/followers.service';
 import { FollowersRepository } from '../repositories/followers.repository';
-import { FOLLOWERS_MODEL } from '../config/mongoose.config';
+import { UserRepository } from '../repositories/user.repository';
+import { NotificationService } from '../services/notification.service';
+import { NotificationModule } from './notification.module';
+import { FOLLOWERS_MODEL, USER_MODEL } from '../config/mongoose.config';
 import { FollowersDocument } from '../schemas/followers.schema';
+import { UserDocument } from '../schemas/user.schema';
 
 @Module({
+  imports: [NotificationModule],
   controllers: [FollowersController],
   providers: [
     {
       provide: FollowersService,
-      useFactory: (followersModel: Model<FollowersDocument>) => {
+      useFactory: (
+        followersModel: Model<FollowersDocument>,
+        userModel: Model<UserDocument>,
+        notificationService: NotificationService,
+      ) => {
         const followersRepository = new FollowersRepository(followersModel);
-        return new FollowersService(followersRepository);
+        const userRepository = new UserRepository(userModel);
+        return new FollowersService(followersRepository, userRepository, notificationService);
       },
-      inject: [FOLLOWERS_MODEL],
+      inject: [FOLLOWERS_MODEL, USER_MODEL, NotificationService],
     },
   ],
   exports: [FollowersService],

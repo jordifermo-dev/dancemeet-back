@@ -98,6 +98,17 @@ export class EventRepository {
     });
   }
 
+  /** Events whose start falls within [dayStart, dayEnd] - the caller passes
+   * local day boundaries, this just does the range match. */
+  async findHappeningToday(dayStart: number, dayEnd: number): Promise<EventDto[]> {
+    return handleDbOperation(this.resourceName, 'findHappeningToday', async () => {
+      const documents = await this.eventModel
+        .find({ eventDateFrom: { $gte: dayStart, $lte: dayEnd } })
+        .lean();
+      return documents.map((document) => mapEventToDto(document));
+    });
+  }
+
   async findUpcoming(currentTime: number): Promise<EventDto[]> {
     return handleDbOperation(this.resourceName, 'findUpcoming', async () => {
       const documents = await this.eventModel
@@ -194,6 +205,19 @@ export class EventRepository {
       }
       const documents = await this.eventModel.find(filter).sort({ eventDateFrom: 1 }).lean();
       return documents.map((document) => mapEventToDto(document));
+    });
+  }
+
+  /** Flips `published` events whose end time has already passed over to
+   * `finished` - doesn't touch `cancelled` events, which stay cancelled
+   * regardless of date. Returns how many were updated. */
+  async finishPastEvents(now: number): Promise<number> {
+    return handleDbOperation(this.resourceName, 'finishPastEvents', async () => {
+      const result = await this.eventModel.updateMany(
+        { status: 'published', eventDateTo: { $lt: now } },
+        { $set: { status: 'finished', updatedAt: now } },
+      );
+      return result.modifiedCount;
     });
   }
 

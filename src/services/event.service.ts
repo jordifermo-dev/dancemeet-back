@@ -1,12 +1,16 @@
 import { BadRequestException } from '@nestjs/common';
-import { EventRepository, UserRepository } from '../repositories';
+import { EventRepository, FavoriteRepository, FollowersRepository, UserRepository } from '../repositories';
 import { CreateEventDto, EventDto, SearchedEventDto, UpdateEventDto } from '../dto';
 import { ResourceNotFoundException } from '../common';
+import { NotificationService } from './notification.service';
 
 export class EventService {
   constructor(
     private readonly eventRepository: EventRepository,
     private readonly userRepository: UserRepository,
+    private readonly followersRepository: FollowersRepository,
+    private readonly favoriteRepository: FavoriteRepository,
+    private readonly notificationService: NotificationService,
   ) {}
 
   /**
@@ -17,9 +21,42 @@ export class EventService {
       if (eventData.eventDateTo <= eventData.eventDateFrom) {
         throw new BadRequestException('eventDateTo must be after eventDateFrom');
       }
-      return await this.eventRepository.create(eventData);
+      const created = await this.eventRepository.create(eventData);
+      await this.notifyAboutNewEvent(created);
+      return created;
     } catch (err) {
       throw err;
+    }
+  }
+
+  /** Two audiences for a freshly published event: people following the
+   * organizer, and (separately) people whose saved discipline/type/status
+   * preferences match it - the second group excludes anyone already
+   * reached through the first, and the organizer themselves, so nobody gets
+   * the same event announced to them twice. */
+  private async notifyAboutNewEvent(event: EventDto): Promise<void> {
+    const creator = await this.userRepository.findById(event.creatorId);
+    const followers = await this.followersRepository.findByUser(event.creatorId);
+    const followerIds = followers.map((f) => f.followerId);
+    if (followerIds.length) {
+      await this.notificationService.notifyMany(followerIds, 'following_new_event', {
+        eventId: event.id!,
+        eventTitle: event.title,
+        name: creator?.name ?? '',
+      });
+    }
+    const matching = await this.userRepository.findMatchingEventPreferences(
+      event.disciplineIds,
+      event.typeIds,
+      event.status,
+    );
+    const alreadyNotified = new Set([...followerIds, event.creatorId]);
+    const preferenceIds = matching.map((u) => u.id!).filter((id) => !alreadyNotified.has(id));
+    if (preferenceIds.length) {
+      await this.notificationService.notifyMany(preferenceIds, 'preference_new_event', {
+        eventId: event.id!,
+        eventTitle: event.title,
+      });
     }
   }
 
@@ -85,9 +122,25 @@ export class EventService {
       if (!updated) {
         throw new ResourceNotFoundException('Event', eventId);
       }
+      await this.notifyAttendeesOfUpdate(eventId);
       return true;
     } catch (err) {
       throw err;
+    }
+  }
+
+  private async notifyAttendeesOfUpdate(eventId: string): Promise<void> {
+    const event = await this.eventRepository.findById(eventId);
+    if (!event) {
+      return;
+    }
+    const attendees = await this.favoriteRepository.findByEvent(eventId);
+    const attendeeIds = attendees.map((a) => a.userId).filter((id) => id !== event.creatorId);
+    if (attendeeIds.length) {
+      await this.notificationService.notifyMany(attendeeIds, 'event_updated', {
+        eventId,
+        eventTitle: event.title,
+      });
     }
   }
 

@@ -16,6 +16,7 @@ import {
 } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 import { ISocialLinks } from '../models';
+import { NOTIFICATION_TYPES, NotificationType } from '../schemas/notification.schema';
 import { SocialLinksDto } from './social-links.dto';
 
 const msg = (rule: string) => i18nValidationMessage(`errors.validation.${rule}`);
@@ -36,7 +37,9 @@ export class UserDto {
   distanceRange!: number;
   eventDateFrom?: number;
   eventDateTo?: number | null;
-  notificationsEnabled!: boolean;
+  /** Notification types the user has turned off - empty means every type is
+   * enabled (the default), all six means "no notifications at all". */
+  disabledNotificationTypes!: NotificationType[];
   disciplineIds!: string[];
   eventTypeIds!: string[];
   statusIds!: string[];
@@ -50,6 +53,13 @@ export class UserDto {
   followedId!: string[];
   followingId!: string[];
   blockedIds!: string[];
+  fcmTokens!: string[];
+}
+
+export class FcmTokenDto {
+  @IsString({ message: msg('isString') })
+  @IsNotEmpty({ message: msg('isNotEmpty') })
+  token!: string;
 }
 
 /** One row of a followers/following list - just enough to render an avatar + name + sort by date. */
@@ -116,8 +126,10 @@ export class CreateUserDto {
   @IsNumber({}, { message: msg('isNumber') })
   eventDateTo?: number | null;
 
-  @IsBoolean({ message: msg('isBoolean') })
-  notificationsEnabled!: boolean;
+  @IsOptional()
+  @IsArray({ message: msg('isArray') })
+  @IsIn(NOTIFICATION_TYPES, { each: true, message: msg('isIn') })
+  disabledNotificationTypes?: NotificationType[];
 
   @IsArray({ message: msg('isArray') })
   @IsMongoId({ each: true, message: msg('isMongoId') })
@@ -223,8 +235,9 @@ export class UpdateUserDto {
   eventDateTo?: number | null;
 
   @IsOptional()
-  @IsBoolean({ message: msg('isBoolean') })
-  notificationsEnabled?: boolean;
+  @IsArray({ message: msg('isArray') })
+  @IsIn(NOTIFICATION_TYPES, { each: true, message: msg('isIn') })
+  disabledNotificationTypes?: NotificationType[];
 
   @IsOptional()
   @IsArray({ message: msg('isArray') })

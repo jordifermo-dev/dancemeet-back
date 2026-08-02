@@ -1,4 +1,5 @@
 import { ISocialLinks } from './socialLinks';
+import { NotificationType } from '../schemas/notification.schema';
 
 export interface IUser {
   id: string;
@@ -14,7 +15,7 @@ export interface IUser {
   distanceRange: number;
   eventDateFrom?: number;
   eventDateTo?: number | null;
-  notificationsEnabled: boolean;
+  disabledNotificationTypes: NotificationType[];
   disciplineIds: string[];
   eventTypeIds: string[];
   statusIds: string[];
@@ -28,4 +29,5 @@ export interface IUser {
   followedId: string[];
   followingId: string[];
   blockedIds: string[];
+  fcmTokens: string[];
 }

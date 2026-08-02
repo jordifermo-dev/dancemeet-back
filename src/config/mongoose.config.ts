@@ -14,6 +14,7 @@ import {
   EventDto,
   FavoriteDto,
   FollowersDto,
+  NotificationDto,
   UserDto,
 } from '../dto';
 
@@ -22,6 +23,7 @@ export const EVENT_TYPE_MODEL = 'EVENT_TYPE_MODEL';
 export const EVENT_MODEL = 'EVENT_MODEL';
 export const FAVORITE_MODEL = 'FAVORITE_MODEL';
 export const FOLLOWERS_MODEL = 'FOLLOWERS_MODEL';
+export const NOTIFICATION_MODEL = 'NOTIFICATION_MODEL';
 export const USER_MODEL = 'USER_MODEL';
 
 export async function connectMongoose(): Promise<typeof mongoose> {
@@ -109,6 +111,19 @@ export function mapFollowersToDto(document: any): FollowersDto {
   };
 }
 
+export function mapNotificationToDto(document: any): NotificationDto {
+  return {
+    id: document._id?.toString(),
+    userId: document.userId,
+    type: document.type,
+    title: document.title,
+    body: document.body,
+    data: document.data,
+    read: document.read ?? false,
+    createdAt: document.createdAt,
+  };
+}
+
 export function mapUserToDto(document: any): UserDto {
   return {
     id: document._id?.toString(),
@@ -128,7 +143,7 @@ export function mapUserToDto(document: any): UserDto {
     // before a field existed (or missing it for any other reason) come back
     // with it truly undefined instead of the schema default. Fall back here
     // so legacy documents match what a freshly created user would get.
-    notificationsEnabled: document.notificationsEnabled ?? true,
+    disabledNotificationTypes: document.disabledNotificationTypes ?? [],
     disciplineIds: document.disciplineIds ?? [],
     eventTypeIds: document.eventTypeIds ?? [],
     statusIds: document.statusIds ?? [],
@@ -142,5 +157,6 @@ export function mapUserToDto(document: any): UserDto {
     followedId: document.followedId ?? [],
     followingId: document.followingId ?? [],
     blockedIds: document.blockedIds ?? [],
+    fcmTokens: document.fcmTokens ?? [],
   };
 }

@@ -6,6 +6,7 @@ import {
   EVENT_MODEL,
   FAVORITE_MODEL,
   FOLLOWERS_MODEL,
+  NOTIFICATION_MODEL,
   USER_MODEL,
 } from '../config/mongoose.config';
 import { DisciplineModel } from '../schemas/discipline.schema';
@@ -13,6 +14,7 @@ import { EventTypeModel } from '../schemas/event-type.schema';
 import { EventModel } from '../schemas/event.schema';
 import { FavoriteModel } from '../schemas/favorite.schema';
 import { FollowersModel } from '../schemas/followers.schema';
+import { NotificationModel } from '../schemas/notification.schema';
 import { UserModel } from '../schemas/user.schema';
 import { HealthModule } from '../health/health.module';
 
@@ -47,6 +49,10 @@ import { HealthModule } from '../health/health.module';
       useFactory: () => FollowersModel,
     },
     {
+      provide: NOTIFICATION_MODEL,
+      useFactory: () => NotificationModel,
+    },
+    {
       provide: USER_MODEL,
       useFactory: () => UserModel,
     },
@@ -58,6 +64,7 @@ import { HealthModule } from '../health/health.module';
     EVENT_MODEL,
     FAVORITE_MODEL,
     FOLLOWERS_MODEL,
+    NOTIFICATION_MODEL,
     USER_MODEL,
   ],
   imports: [HealthModule],

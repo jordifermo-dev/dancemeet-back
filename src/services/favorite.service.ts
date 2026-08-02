@@ -5,12 +5,14 @@ import {
   BusinessRuleException,
   DuplicateKeyException,
 } from '../common';
+import { NotificationService } from './notification.service';
 
 export class FavoriteService {
   constructor(
     private readonly favoriteRepository: FavoriteRepository,
     private readonly eventRepository: EventRepository,
     private readonly userRepository: UserRepository,
+    private readonly notificationService: NotificationService,
   ) {}
 
   /**
@@ -200,11 +202,22 @@ export class FavoriteService {
         );
       }
       try {
-        return await this.createFavorite({
+        const created = await this.createFavorite({
           userId,
           eventId,
           createdAt: Date.now(),
         });
+        const event = await this.eventRepository.findById(eventId);
+        const attendee = await this.userRepository.findById(userId);
+        if (event && attendee && event.creatorId !== userId) {
+          await this.notificationService.notify(event.creatorId, 'event_attendee', {
+            eventId,
+            fromUserId: userId,
+            name: attendee.name,
+            eventTitle: event.title,
+          });
+        }
+        return created;
       } catch (err) {
         if (err instanceof DuplicateKeyException) {
           throw new BusinessRuleException(

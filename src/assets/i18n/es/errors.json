@@ -5,7 +5,8 @@
     "Discipline": "disciplina",
     "EventType": "tipo de evento",
     "Favorite": "favorito",
-    "Follower": "relación de seguimiento"
+    "Follower": "relación de seguimiento",
+    "Notification": "notificación"
   },
   "fields": {
     "name": "Nombre",
@@ -17,7 +18,7 @@
     "latitude": "Latitud",
     "longitude": "Longitud",
     "distanceRange": "Radio de distancia",
-    "notificationsEnabled": "Notificaciones activadas",
+    "disabledNotificationTypes": "Notificaciones desactivadas",
     "disciplineIds": "Disciplinas",
     "eventTypeIds": "Tipos de evento",
     "statusIds": "Estados",

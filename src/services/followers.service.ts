@@ -1,13 +1,18 @@
-import { FollowersRepository } from '../repositories';
+import { FollowersRepository, UserRepository } from '../repositories';
 import { CreateFollowersDto, FollowersDto, UpdateFollowersDto } from '../dto';
 import {
   ResourceNotFoundException,
   BusinessRuleException,
   DuplicateKeyException,
 } from '../common';
+import { NotificationService } from './notification.service';
 
 export class FollowersService {
-  constructor(private readonly followersRepository: FollowersRepository) {}
+  constructor(
+    private readonly followersRepository: FollowersRepository,
+    private readonly userRepository: UserRepository,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   /**
    * Create a new follower relationship
@@ -130,11 +135,19 @@ export class FollowersService {
         );
       }
       try {
-        return await this.createFollower({
+        const created = await this.createFollower({
           userId,
           followerId,
           createdAt: Date.now(),
         });
+        const follower = await this.userRepository.findById(followerId);
+        if (follower) {
+          await this.notificationService.notify(userId, 'new_follower', {
+            fromUserId: followerId,
+            name: follower.name,
+          });
+        }
+        return created;
       } catch (err) {
         if (err instanceof DuplicateKeyException) {
           throw new BusinessRuleException(
