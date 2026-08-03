@@ -70,6 +70,12 @@ export class NotificationService {
       const response = await getMessaging(initFirebaseAdmin()).sendEachForMulticast({
         tokens,
         notification: { title: notification.title, body: notification.body },
+        // channelId must match an Android notification channel id the app
+        // creates (see NotificationService.ensureNotificationChannels in the
+        // frontend, keyed by this same NotificationType) - otherwise Android
+        // silently falls back to its own generic "Default" channel and the
+        // user can't mute this type independently from Settings.
+        android: { notification: { channelId: notification.type } },
         data: Object.fromEntries(
           Object.entries({ type: notification.type, ...notification.data }).map(([key, value]) => [
             key,
