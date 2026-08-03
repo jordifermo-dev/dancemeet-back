@@ -97,7 +97,9 @@ export class FavoriteService {
    * Get the events a user organizes (creatorId) and/or has favorited,
    * hydrated with the creator's name so the Favorites list can render a full
    * card without a request per event. Each event is tagged with how the user
-   * relates to it - an event the user both created and favorited counts once, as "both".
+   * relates to it - creating it always wins over favoriting it (organizing
+   * your own event already means you're attending, so there's nothing extra
+   * to signal by also marking it favorited).
    */
   async getFavoritedEventsDetailed(userId: string): Promise<FavoritedEventDto[]> {
     try {
@@ -119,9 +121,7 @@ export class FavoriteService {
       return events
         .map((event) => {
           const isCreator = createdEventIds.has(event.id!);
-          const isFavorite = favoritedEventIds.has(event.id!);
-          const relation: 'creator' | 'favorite' | 'both' =
-            isCreator && isFavorite ? 'both' : isCreator ? 'creator' : 'favorite';
+          const relation: 'creator' | 'favorite' = isCreator ? 'creator' : 'favorite';
           return {
             ...event,
             creatorName: creatorNameById.get(event.creatorId) ?? '',

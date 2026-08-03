@@ -15,7 +15,7 @@ export class FavoriteDto {
  * render the Favorites list (avatar/name) without a second round-trip per card. */
 export class FavoritedEventDto extends EventDto {
   creatorName!: string;
-  relation!: 'creator' | 'favorite' | 'both';
+  relation!: 'creator' | 'favorite';
 }
 
 /** One row of an event's attendee list - same shape as FollowUserDto (one row
