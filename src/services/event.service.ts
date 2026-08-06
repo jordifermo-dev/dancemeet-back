@@ -22,6 +22,14 @@ export class EventService {
         throw new BadRequestException('eventDateTo must be after eventDateFrom');
       }
       const created = await this.eventRepository.create(eventData);
+      // Organizing an event means attending it - this is what actually
+      // makes the creator count as an attendee (heart filled, attendee
+      // list/count includes them), not just a display-only default.
+      await this.favoriteRepository.create({
+        userId: created.creatorId,
+        eventId: created.id!,
+        createdAt: Date.now(),
+      });
       await this.notifyAboutNewEvent(created);
       return created;
     } catch (err) {
