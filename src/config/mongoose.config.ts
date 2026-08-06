@@ -147,6 +147,8 @@ export function mapUserToDto(document: any): UserDto {
     disciplineIds: document.disciplineIds ?? [],
     eventTypeIds: document.eventTypeIds ?? [],
     statusIds: document.statusIds ?? [],
+    priceOptions: document.priceOptions ?? [],
+    relationTypes: document.relationTypes ?? [],
     language: document.language ?? 'es',
     showEmail: document.showEmail ?? false,
     showPhone: document.showPhone ?? false,

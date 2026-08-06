@@ -13,6 +13,13 @@ export class EventRepository {
     return handleDbOperation(this.resourceName, 'create', async () => {
       const createdDocument = await this.eventModel.create({
         ...eventData,
+        // location isn't part of CreateEventDto (only latitude/longitude
+        // are) - without deriving it here it silently keeps the schema's
+        // [0, 0] default, which is nowhere near any real event and made
+        // every newly created event invisible to the $near-based searches
+        // findFiltered()/findNearby() use (Explorer's map, Events' list),
+        // even though its latitude/longitude were saved correctly.
+        location: { type: 'Point', coordinates: [eventData.longitude, eventData.latitude] },
         createdAt: eventData.createdAt ?? Date.now(),
       });
       return mapEventToDto(createdDocument);
@@ -49,9 +56,26 @@ export class EventRepository {
       if (!isValidObjectId(id)) {
         throw new InvalidIdException(this.resourceName, id);
       }
+      // Same reasoning as create() above: location doesn't travel on its own,
+      // so an edit that moves the event has to re-derive it from the new
+      // latitude/longitude too, whenever both are actually part of this
+      // update (the caller always sends them as a pair - see event-detail
+      // .page.ts's saveEdit() - so a partial pair is never expected here,
+      // but only transforming when both are present avoids ever writing a
+      // half-formed coordinate if that assumption ever stops holding).
+      const update =
+        document.latitude !== undefined && document.longitude !== undefined
+          ? {
+              ...document,
+              location: {
+                type: 'Point',
+                coordinates: [document.longitude, document.latitude],
+              },
+            }
+          : document;
       const updatedDocument = await this.eventModel.findByIdAndUpdate(
         id,
-        { $set: document },
+        { $set: update },
         { new: true },
       );
       return !!updatedDocument;

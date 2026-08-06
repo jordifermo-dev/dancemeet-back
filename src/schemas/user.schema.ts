@@ -20,6 +20,8 @@ export interface UserDocument extends Document {
   disciplineIds: string[];
   eventTypeIds: string[];
   statusIds: string[];
+  priceOptions: string[];
+  relationTypes: string[];
   language: string;
   showEmail: boolean;
   showPhone: boolean;
@@ -66,6 +68,8 @@ export const UserSchema = new Schema<UserDocument>(
     disciplineIds: { type: [String], default: [] },
     eventTypeIds: { type: [String], default: [] },
     statusIds: { type: [String], default: [] },
+    priceOptions: { type: [String], default: [] },
+    relationTypes: { type: [String], default: [] },
     language: { type: String, default: 'es' },
     showEmail: { type: Boolean, required: true, default: false },
     showPhone: { type: Boolean, required: true, default: false },

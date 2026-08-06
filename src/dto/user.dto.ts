@@ -22,6 +22,8 @@ import { SocialLinksDto } from './social-links.dto';
 const msg = (rule: string) => i18nValidationMessage(`errors.validation.${rule}`);
 
 const SUPPORTED_LANGUAGES = ['es', 'ca', 'en'];
+const PRICE_OPTIONS = ['free', 'paid'];
+const RELATION_TYPES = ['organizer', 'attendee'];
 
 export class UserDto {
   id?: string;
@@ -43,6 +45,8 @@ export class UserDto {
   disciplineIds!: string[];
   eventTypeIds!: string[];
   statusIds!: string[];
+  priceOptions!: string[];
+  relationTypes!: string[];
   language!: string;
   showEmail!: boolean;
   showPhone!: boolean;
@@ -142,6 +146,16 @@ export class CreateUserDto {
   @IsArray({ message: msg('isArray') })
   @IsString({ each: true, message: msg('isString') })
   statusIds!: string[];
+
+  @IsOptional()
+  @IsArray({ message: msg('isArray') })
+  @IsIn(PRICE_OPTIONS, { each: true, message: msg('isIn') })
+  priceOptions?: string[];
+
+  @IsOptional()
+  @IsArray({ message: msg('isArray') })
+  @IsIn(RELATION_TYPES, { each: true, message: msg('isIn') })
+  relationTypes?: string[];
 
   @IsOptional()
   @IsIn(SUPPORTED_LANGUAGES, { message: msg('isIn') })
@@ -253,6 +267,16 @@ export class UpdateUserDto {
   @IsArray({ message: msg('isArray') })
   @IsString({ each: true, message: msg('isString') })
   statusIds?: string[];
+
+  @IsOptional()
+  @IsArray({ message: msg('isArray') })
+  @IsIn(PRICE_OPTIONS, { each: true, message: msg('isIn') })
+  priceOptions?: string[];
+
+  @IsOptional()
+  @IsArray({ message: msg('isArray') })
+  @IsIn(RELATION_TYPES, { each: true, message: msg('isIn') })
+  relationTypes?: string[];
 
   @IsOptional()
   @IsIn(SUPPORTED_LANGUAGES, { message: msg('isIn') })

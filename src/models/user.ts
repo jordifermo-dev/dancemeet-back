@@ -19,6 +19,8 @@ export interface IUser {
   disciplineIds: string[];
   eventTypeIds: string[];
   statusIds: string[];
+  priceOptions: string[];
+  relationTypes: string[];
   language: string;
   showEmail: boolean;
   showPhone: boolean;
