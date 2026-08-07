@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { EventController } from '../controllers/event.controller';
+import { ShareController } from '../controllers/share.controller';
 import { EventService } from '../services/event.service';
 import { EventRepository } from '../repositories/event.repository';
 import { UserRepository } from '../repositories/user.repository';
@@ -16,7 +17,7 @@ import { FavoriteDocument } from '../schemas/favorite.schema';
 
 @Module({
   imports: [NotificationModule],
-  controllers: [EventController],
+  controllers: [EventController, ShareController],
   providers: [
     {
       provide: EventService,
