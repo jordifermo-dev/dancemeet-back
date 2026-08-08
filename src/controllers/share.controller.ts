@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Req, Res } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Param, Query, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import sharp from 'sharp';
 import { EventService } from '../services/event.service';
@@ -53,6 +53,30 @@ function selfBaseUrl(req: Request): string {
 @Public()
 export class ShareController {
   constructor(private readonly eventService: EventService) {}
+
+  // TinyURL's create endpoint has no auth/API key and returns the short URL
+  // as a plain-text body - called from here (not directly from the
+  // frontend) purely to sidestep CORS on a third-party domain we don't
+  // control. Falls back to the original URL on any failure, so a flaky/down
+  // shortener degrades the share text rather than breaking it.
+  @Get('shorten')
+  async shorten(@Query('url') url?: string): Promise<{ shortUrl: string }> {
+    if (!url) {
+      throw new BadRequestException('url is required');
+    }
+    try {
+      const response = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      const text = (await response.text()).trim();
+      if (response.ok && text.startsWith('http')) {
+        return { shortUrl: text };
+      }
+    } catch {
+      // fall through to the original URL below
+    }
+    return { shortUrl: url };
+  }
 
   @Get('events/:id')
   async shareEvent(@Param('id') id: string, @Req() req: Request, @Res() res: Response): Promise<void> {
