@@ -19,6 +19,9 @@ export interface IEvent {
   city: string;
   latitude: number;
   longitude: number;
+  seriesId?: string;
+  seriesIndex?: number;
+  seriesTotal?: number;
   createdAt: number;
   updatedAt?: number;
 }

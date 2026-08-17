@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -13,7 +14,15 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { EventService } from '../services/event.service';
-import { CreateEventDto, EventDto, SearchedEventDto, UpdateEventDto } from '../dto';
+import {
+  AttachRecurrenceDto,
+  CreateEventDto,
+  CreateEventSeriesDto,
+  EventDto,
+  PatchEventSeriesDto,
+  SearchedEventDto,
+  UpdateEventDto,
+} from '../dto';
 
 @Controller('api/events')
 export class EventController {
@@ -29,10 +38,31 @@ export class EventController {
     }
   }
 
+  @Post('series')
+  @HttpCode(HttpStatus.CREATED)
+  async createEventSeries(@Body() seriesData: CreateEventSeriesDto): Promise<{ seriesId: string; events: EventDto[] }> {
+    try {
+      return await this.eventService.createEventSeries(seriesData);
+    } catch (err) {
+      throw err;
+    }
+  }
+
   @Get()
   async getAllEvents(): Promise<EventDto[]> {
     try {
       return await this.eventService.getAllEvents();
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  // Must come before @Get(':id') below - otherwise ':id' would greedily
+  // match the literal "series" path segment as an event id.
+  @Get('series/:seriesId')
+  async getEventsBySeriesId(@Param('seriesId') seriesId: string): Promise<EventDto[]> {
+    try {
+      return await this.eventService.getEventsBySeriesId(seriesId);
     } catch (err) {
       throw err;
     }
@@ -141,6 +171,31 @@ export class EventController {
     }
   }
 
+  // Same route-order reasoning as getEventsBySeriesId above - must come
+  // before @Put(':id')/@Delete(':id').
+  @Patch('series/:seriesId')
+  async updateEventSeries(
+    @Param('seriesId') seriesId: string,
+    @Body() patch: PatchEventSeriesDto,
+  ): Promise<{ modifiedCount: number }> {
+    try {
+      const modifiedCount = await this.eventService.updateEventSeries(seriesId, patch);
+      return { modifiedCount };
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  @Delete('series/:seriesId')
+  async deleteEventSeries(@Param('seriesId') seriesId: string): Promise<{ deletedCount: number }> {
+    try {
+      const deletedCount = await this.eventService.deleteEventSeries(seriesId);
+      return { deletedCount };
+    } catch (err) {
+      throw err;
+    }
+  }
+
   @Put(':id')
   async updateEvent(
     @Param('id') eventId: string,
@@ -159,6 +214,18 @@ export class EventController {
     try {
       const success = await this.eventService.deleteEvent(eventId);
       return { success };
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  @Patch(':id/recurrence')
+  async attachRecurrenceToEvent(
+    @Param('id') eventId: string,
+    @Body() dto: AttachRecurrenceDto,
+  ): Promise<{ seriesId: string; events: EventDto[] }> {
+    try {
+      return await this.eventService.attachRecurrenceToEvent(eventId, dto.recurrence);
     } catch (err) {
       throw err;
     }

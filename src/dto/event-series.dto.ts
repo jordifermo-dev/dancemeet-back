@@ -9,54 +9,89 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   Max,
   MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
-import { ISocialLinks } from '../models';
 import { SocialLinksDto } from './social-links.dto';
 
 const msg = (rule: string) => i18nValidationMessage(`errors.validation.${rule}`);
 
-export const EVENT_STATUSES = ['published', 'cancelled', 'finished'] as const;
-export type EventStatus = (typeof EVENT_STATUSES)[number];
+// No dedicated "errors.validation.matches" i18n key exists yet - 'default'
+// is the same generic fallback CreateEventDto's own class-validator
+// decorators would hit for anything not explicitly keyed.
+const TIME_HHMM_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-export class EventDto {
-  id?: string;
-  title!: string;
-  description!: string;
-  additionalInfo?: string;
-  socialLinks?: ISocialLinks;
-  imageUrl!: string;
-  typeIds!: string[];
-  disciplineIds!: string[];
-  eventDateFrom!: number;
-  eventDateTo!: number;
-  status!: string;
-  isFree!: boolean;
-  price!: number;
-  creatorId!: string;
-  address!: string;
-  city!: string;
-  latitude!: number;
-  longitude!: number;
-  seriesId?: string;
-  seriesIndex?: number;
-  seriesTotal?: number;
-  createdAt!: number;
-  updatedAt?: number;
+export const RECURRENCE_FREQUENCIES = ['weekly', 'monthlyNthWeekday'] as const;
+export type RecurrenceFrequencyDto = (typeof RECURRENCE_FREQUENCIES)[number];
+
+export class NthWeekdayDto {
+  @IsNumber({}, { message: msg('isNumber') })
+  @Min(1, { message: msg('min') })
+  @Max(4, { message: msg('max') })
+  nth!: number;
+
+  @IsNumber({}, { message: msg('isNumber') })
+  @Min(0, { message: msg('min') })
+  @Max(6, { message: msg('max') })
+  weekday!: number;
 }
 
-/** An event returned by the combined filter search, hydrated with the
- * creator's name so the Events tab list can render a full card without a
- * request per event (same idea as FavoritedEventDto). */
-export class SearchedEventDto extends EventDto {
-  creatorName!: string;
+export class RecurrenceRuleDto {
+  @IsIn(RECURRENCE_FREQUENCIES, { message: msg('isIn') })
+  frequency!: RecurrenceFrequencyDto;
+
+  @IsNumber({}, { message: msg('isNumber') })
+  @Min(1, { message: msg('min') })
+  interval!: number;
+
+  // Required when frequency='weekly' - not enforced via a conditional
+  // decorator (class-validator's own frequency-dependent validation would
+  // need a custom validator class); EventService.createEventSeries()
+  // rejects an empty/absent list itself via expandRecurrence() returning
+  // zero occurrences.
+  @IsOptional()
+  @IsArray({ message: msg('isArray') })
+  @ArrayMinSize(1, { message: msg('arrayMinSize') })
+  @IsNumber({}, { each: true, message: msg('isNumber') })
+  @Min(0, { each: true, message: msg('min') })
+  @Max(6, { each: true, message: msg('max') })
+  weekdays?: number[];
+
+  // Required when frequency='monthlyNthWeekday' - same reasoning as weekdays above.
+  @IsOptional()
+  @IsArray({ message: msg('isArray') })
+  @ArrayMinSize(1, { message: msg('arrayMinSize') })
+  @ValidateNested({ each: true })
+  @Type(() => NthWeekdayDto)
+  nthWeekdays?: NthWeekdayDto[];
+
+  @IsNumber({}, { message: msg('isNumber') })
+  dateFrom!: number;
+
+  // null = "sin límite" (see explorer.noEndLimit-equivalent in the recurrence
+  // editor) - expandRecurrence() then caps generation at MAX_SERIES_OCCURRENCES.
+  @IsOptional()
+  @IsNumber({}, { message: msg('isNumber') })
+  dateTo?: number | null;
 }
 
-export class CreateEventDto {
+/** Body for PATCH /api/events/:id/recurrence - attaches a recurrence rule to
+ * an already-existing single event, turning it into the first instance of a
+ * new series. dateFrom is ignored server-side (forced to the existing
+ * event's own date - see EventService.attachRecurrenceToEvent) since that
+ * event's day is always the anchor. No timeFrom/timeTo either - both are
+ * derived from the existing event's own eventDateFrom/eventDateTo. */
+export class AttachRecurrenceDto {
+  @ValidateNested()
+  @Type(() => RecurrenceRuleDto)
+  recurrence!: RecurrenceRuleDto;
+}
+
+export class CreateEventSeriesDto {
   @IsString({ message: msg('isString') })
   @IsNotEmpty({ message: msg('isNotEmpty') })
   @MaxLength(200, { message: msg('maxLength') })
@@ -79,9 +114,6 @@ export class CreateEventDto {
   @IsNotEmpty({ message: msg('isNotEmpty') })
   imageUrl!: string;
 
-  // An event can be more than one type (e.g. workshop then jam) and more
-  // than one dance style (e.g. Swing and Rock&Roll) - at least one of each
-  // is required.
   @IsArray({ message: msg('isArray') })
   @ArrayMinSize(1, { message: msg('arrayMinSize') })
   @IsMongoId({ each: true, message: msg('isMongoId') })
@@ -91,15 +123,6 @@ export class CreateEventDto {
   @ArrayMinSize(1, { message: msg('arrayMinSize') })
   @IsMongoId({ each: true, message: msg('isMongoId') })
   disciplineIds!: string[];
-
-  @IsNumber({}, { message: msg('isNumber') })
-  eventDateFrom!: number;
-
-  @IsNumber({}, { message: msg('isNumber') })
-  eventDateTo!: number;
-
-  @IsIn(EVENT_STATUSES, { message: msg('isIn') })
-  status!: EventStatus;
 
   @IsBoolean({ message: msg('isBoolean') })
   isFree!: boolean;
@@ -130,16 +153,21 @@ export class CreateEventDto {
   @Max(180, { message: msg('max') })
   longitude!: number;
 
-  @IsOptional()
-  @IsNumber({}, { message: msg('isNumber') })
-  createdAt?: number;
+  @ValidateNested()
+  @Type(() => RecurrenceRuleDto)
+  recurrence!: RecurrenceRuleDto;
 
-  @IsOptional()
-  @IsNumber({}, { message: msg('isNumber') })
-  updatedAt?: number;
+  @Matches(TIME_HHMM_PATTERN, { message: msg('default') })
+  timeFrom!: string;
+
+  @Matches(TIME_HHMM_PATTERN, { message: msg('default') })
+  timeTo!: string;
 }
 
-export class UpdateEventDto {
+/** Bulk-edits every instance of a series at once - no absolute date fields
+ * (each instance keeps its own date; only timeFrom/timeTo optionally shift
+ * every instance's time-of-day while preserving its date and duration). */
+export class PatchEventSeriesDto {
   @IsOptional()
   @IsString({ message: msg('isString') })
   @IsNotEmpty({ message: msg('isNotEmpty') })
@@ -178,18 +206,6 @@ export class UpdateEventDto {
   disciplineIds?: string[];
 
   @IsOptional()
-  @IsNumber({}, { message: msg('isNumber') })
-  eventDateFrom?: number;
-
-  @IsOptional()
-  @IsNumber({}, { message: msg('isNumber') })
-  eventDateTo?: number;
-
-  @IsOptional()
-  @IsIn(EVENT_STATUSES, { message: msg('isIn') })
-  status?: EventStatus;
-
-  @IsOptional()
   @IsBoolean({ message: msg('isBoolean') })
   isFree?: boolean;
 
@@ -197,10 +213,6 @@ export class UpdateEventDto {
   @IsNumber({}, { message: msg('isNumber') })
   @Min(0, { message: msg('min') })
   price?: number;
-
-  @IsOptional()
-  @IsMongoId({ message: msg('isMongoId') })
-  creatorId?: string;
 
   @IsOptional()
   @IsString({ message: msg('isString') })
@@ -226,10 +238,10 @@ export class UpdateEventDto {
   longitude?: number;
 
   @IsOptional()
-  @IsNumber({}, { message: msg('isNumber') })
-  createdAt?: number;
+  @Matches(TIME_HHMM_PATTERN, { message: msg('default') })
+  timeFrom?: string;
 
   @IsOptional()
-  @IsNumber({}, { message: msg('isNumber') })
-  updatedAt?: number;
+  @Matches(TIME_HHMM_PATTERN, { message: msg('default') })
+  timeTo?: string;
 }

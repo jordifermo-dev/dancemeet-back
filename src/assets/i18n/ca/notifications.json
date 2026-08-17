@@ -10,5 +10,7 @@
   "followingNewEventTitle": "Nou esdeveniment",
   "followingNewEventBody": "{{name}}, a qui segueixes, ha publicat \"{{eventTitle}}\"",
   "preferenceNewEventTitle": "Esdeveniment per a tu",
-  "preferenceNewEventBody": "S'ha publicat \"{{eventTitle}}\", et pot interessar"
+  "preferenceNewEventBody": "S'ha publicat \"{{eventTitle}}\", et pot interessar",
+  "recurringSeriesCreatedTitle": "Nou esdeveniment recurrent",
+  "recurringSeriesCreatedBody": "\"{{eventTitle}}\" és un esdeveniment nou que es repeteix {{count}} vegades"
 }

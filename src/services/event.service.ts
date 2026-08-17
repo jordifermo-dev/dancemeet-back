@@ -1,7 +1,15 @@
+import { randomUUID } from 'crypto';
 import { BadRequestException } from '@nestjs/common';
 import { EventRepository, FavoriteRepository, FollowersRepository, UserRepository } from '../repositories';
-import { CreateEventDto, EventDto, SearchedEventDto, UpdateEventDto } from '../dto';
-import { ResourceNotFoundException } from '../common';
+import { CreateEventDto, CreateEventSeriesDto, EventDto, PatchEventSeriesDto, RecurrenceRuleDto, SearchedEventDto, UpdateEventDto } from '../dto';
+import {
+  ResourceNotFoundException,
+  RecurrenceRule,
+  expandRecurrence,
+  formatHHmm,
+  isSameLocalDay,
+  MAX_SERIES_OCCURRENCES,
+} from '../common';
 import { NotificationService } from './notification.service';
 
 export class EventService {
@@ -66,6 +74,198 @@ export class EventService {
         eventTitle: event.title,
       });
     }
+  }
+
+  /**
+   * Create a recurring series: expands the rule into concrete occurrences
+   * server-side, bulk-inserts one real Event per occurrence (all sharing a
+   * seriesId - see EventRepository.createSeries), auto-favorites the
+   * creator for every instance, and sends a single series-level
+   * notification instead of one per instance (createEvent()'s
+   * notifyAboutNewEvent would otherwise fan out N times to the same
+   * followers for what the user experiences as one action).
+   */
+  async createEventSeries(dto: CreateEventSeriesDto): Promise<{ seriesId: string; events: EventDto[] }> {
+    if (dto.timeTo <= dto.timeFrom) {
+      throw new BadRequestException('timeTo must be after timeFrom');
+    }
+    const rule: RecurrenceRule = {
+      frequency: dto.recurrence.frequency,
+      interval: dto.recurrence.interval,
+      weekdays: dto.recurrence.weekdays,
+      nthWeekdays: dto.recurrence.nthWeekdays,
+      dateFrom: dto.recurrence.dateFrom,
+      dateTo: dto.recurrence.dateTo ?? null,
+    };
+    const occurrences = expandRecurrence(rule, dto.timeFrom, dto.timeTo);
+    if (!occurrences.length) {
+      throw new BadRequestException('The recurrence rule did not generate any occurrences');
+    }
+    if (occurrences.length > MAX_SERIES_OCCURRENCES) {
+      throw new BadRequestException(
+        `The recurrence rule would generate ${occurrences.length} events, more than the maximum of ${MAX_SERIES_OCCURRENCES}`,
+      );
+    }
+    const { recurrence, timeFrom, timeTo, ...baseFields } = dto;
+    const seriesId = randomUUID();
+    const events = await this.eventRepository.createSeries(baseFields, occurrences, seriesId);
+    // Same reasoning as createEvent()'s single favorite.create() call -
+    // organizing means attending every instance too.
+    await Promise.all(
+      events.map((event) =>
+        this.favoriteRepository.create({ userId: event.creatorId, eventId: event.id!, createdAt: Date.now() }),
+      ),
+    );
+    await this.notifyAboutRecurringSeries(events);
+    return { seriesId, events };
+  }
+
+  private async notifyAboutRecurringSeries(events: EventDto[]): Promise<void> {
+    const first = events[0];
+    const followers = await this.followersRepository.findByUser(first.creatorId);
+    const followerIds = followers.map((f) => f.followerId);
+    if (followerIds.length) {
+      await this.notificationService.notifyMany(followerIds, 'recurring_series_created', {
+        eventId: first.id!,
+        eventTitle: first.title,
+        count: String(events.length),
+      });
+    }
+    const matching = await this.userRepository.findMatchingEventPreferences(
+      first.disciplineIds,
+      first.typeIds,
+      first.status,
+    );
+    const alreadyNotified = new Set([...followerIds, first.creatorId]);
+    const preferenceIds = matching.map((u) => u.id!).filter((id) => !alreadyNotified.has(id));
+    if (preferenceIds.length) {
+      await this.notificationService.notifyMany(preferenceIds, 'recurring_series_created', {
+        eventId: first.id!,
+        eventTitle: first.title,
+        count: String(events.length),
+      });
+    }
+  }
+
+  async getEventsBySeriesId(seriesId: string): Promise<EventDto[]> {
+    return this.eventRepository.findBySeriesId(seriesId);
+  }
+
+  /**
+   * Bulk-edits every instance of a series: non-date fields via a plain
+   * updateMany, and timeFrom/timeTo (if both given) via a per-document date
+   * recompute (see EventRepository.bulkShiftSeriesTime) since each instance
+   * keeps its own date. Notifies every series attendee once, reusing the
+   * existing 'event_updated' type pointed at the series' first instance.
+   */
+  async updateEventSeries(seriesId: string, patch: PatchEventSeriesDto): Promise<number> {
+    const { timeFrom, timeTo, ...rest } = patch;
+    if ((timeFrom === undefined) !== (timeTo === undefined)) {
+      throw new BadRequestException('timeFrom and timeTo must be provided together');
+    }
+    let modifiedCount = 0;
+    if (Object.keys(rest).length) {
+      modifiedCount = await this.eventRepository.updateManyBySeriesId(seriesId, rest);
+    }
+    if (timeFrom !== undefined && timeTo !== undefined) {
+      if (timeTo <= timeFrom) {
+        throw new BadRequestException('timeTo must be after timeFrom');
+      }
+      modifiedCount = await this.eventRepository.bulkShiftSeriesTime(seriesId, timeFrom, timeTo);
+    }
+    await this.notifyAttendeesOfSeriesUpdate(seriesId);
+    return modifiedCount;
+  }
+
+  private async notifyAttendeesOfSeriesUpdate(seriesId: string): Promise<void> {
+    const events = await this.eventRepository.findBySeriesId(seriesId);
+    if (!events.length) {
+      return;
+    }
+    const first = events[0];
+    const attendeeSets = await Promise.all(events.map((event) => this.favoriteRepository.findByEvent(event.id!)));
+    const attendeeIds = [...new Set(attendeeSets.flat().map((a) => a.userId))].filter((id) => id !== first.creatorId);
+    if (attendeeIds.length) {
+      await this.notificationService.notifyMany(attendeeIds, 'event_updated', {
+        eventId: first.id!,
+        eventTitle: first.title,
+      });
+    }
+  }
+
+  /**
+   * Deletes every instance of a series - no attendee notification, matching
+   * deleteEvent()'s own single-event behavior (which doesn't notify either).
+   */
+  async deleteEventSeries(seriesId: string): Promise<number> {
+    return this.eventRepository.deleteManyBySeriesId(seriesId);
+  }
+
+  /**
+   * Turns an already-published single event into the first instance of a
+   * brand-new series - the event keeps its id (and therefore its existing
+   * favorites/notification history), and the remaining occurrences are
+   * created as new documents sharing a fresh seriesId. The rule's own
+   * dateFrom is ignored (always forced to the existing event's day, since
+   * that day has to be part of the series) and timeFrom/timeTo are derived
+   * from the existing event's own eventDateFrom/eventDateTo rather than
+   * being resent by the caller.
+   */
+  async attachRecurrenceToEvent(
+    eventId: string,
+    ruleDto: RecurrenceRuleDto,
+  ): Promise<{ seriesId: string; events: EventDto[] }> {
+    const existing = await this.eventRepository.findById(eventId);
+    if (!existing) {
+      throw new ResourceNotFoundException('Event', eventId);
+    }
+    if (existing.seriesId) {
+      throw new BadRequestException('This event is already part of a recurring series');
+    }
+    const timeFrom = formatHHmm(existing.eventDateFrom);
+    const timeTo = formatHHmm(existing.eventDateTo);
+    const rule: RecurrenceRule = {
+      frequency: ruleDto.frequency,
+      interval: ruleDto.interval,
+      weekdays: ruleDto.weekdays,
+      nthWeekdays: ruleDto.nthWeekdays,
+      dateFrom: existing.eventDateFrom,
+      dateTo: ruleDto.dateTo ?? null,
+    };
+    const occurrences = expandRecurrence(rule, timeFrom, timeTo);
+    if (!occurrences.length || !isSameLocalDay(occurrences[0].eventDateFrom, existing.eventDateFrom)) {
+      throw new BadRequestException("The recurrence rule must include this event's own day");
+    }
+    if (occurrences.length > MAX_SERIES_OCCURRENCES) {
+      throw new BadRequestException(
+        `The recurrence rule would generate ${occurrences.length} events, more than the maximum of ${MAX_SERIES_OCCURRENCES}`,
+      );
+    }
+    const {
+      id: _id,
+      createdAt: _createdAt,
+      updatedAt: _updatedAt,
+      seriesId: _seriesId,
+      seriesIndex: _seriesIndex,
+      seriesTotal: _seriesTotal,
+      eventDateFrom: _eventDateFrom,
+      eventDateTo: _eventDateTo,
+      status: _status,
+      ...baseFields
+    } = existing;
+    const seriesId = randomUUID();
+    const events = await this.eventRepository.attachToExistingSeries(eventId, baseFields, seriesId, occurrences);
+    // The existing event is already favorited by its creator (from
+    // createEvent()) - only the newly-created instances need it.
+    await Promise.all(
+      events
+        .slice(1)
+        .map((event) =>
+          this.favoriteRepository.create({ userId: event.creatorId, eventId: event.id!, createdAt: Date.now() }),
+        ),
+    );
+    await this.notifyAboutRecurringSeries(events);
+    return { seriesId, events };
   }
 
   /**

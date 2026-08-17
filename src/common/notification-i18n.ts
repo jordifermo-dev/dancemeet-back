@@ -35,6 +35,7 @@ const TEMPLATE_KEYS: Record<NotificationType, { title: string; body: string }> =
   event_reminder_today: { title: 'eventReminderTodayTitle', body: 'eventReminderTodayBody' },
   following_new_event: { title: 'followingNewEventTitle', body: 'followingNewEventBody' },
   preference_new_event: { title: 'preferenceNewEventTitle', body: 'preferenceNewEventBody' },
+  recurring_series_created: { title: 'recurringSeriesCreatedTitle', body: 'recurringSeriesCreatedBody' },
 };
 
 export function renderNotification(

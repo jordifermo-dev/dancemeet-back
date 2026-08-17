@@ -6,7 +6,8 @@ export type NotificationType =
   | 'event_updated'
   | 'event_reminder_today'
   | 'following_new_event'
-  | 'preference_new_event';
+  | 'preference_new_event'
+  | 'recurring_series_created';
 
 export const NOTIFICATION_TYPES: NotificationType[] = [
   'new_follower',
@@ -15,6 +16,7 @@ export const NOTIFICATION_TYPES: NotificationType[] = [
   'event_reminder_today',
   'following_new_event',
   'preference_new_event',
+  'recurring_series_created',
 ];
 
 export interface NotificationDocument extends Document {

@@ -37,7 +37,7 @@ export class UserDto {
   latitude!: number;
   longitude!: number;
   distanceRange!: number;
-  eventDateFrom?: number;
+  eventDateFrom?: number | null;
   eventDateTo?: number | null;
   /** Notification types the user has turned off - empty means every type is
    * enabled (the default), all six means "no notifications at all". */
@@ -124,7 +124,7 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsNumber({}, { message: msg('isNumber') })
-  eventDateFrom?: number;
+  eventDateFrom?: number | null;
 
   @IsOptional()
   @IsNumber({}, { message: msg('isNumber') })
@@ -242,7 +242,7 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsNumber({}, { message: msg('isNumber') })
-  eventDateFrom?: number;
+  eventDateFrom?: number | null;
 
   @IsOptional()
   @IsNumber({}, { message: msg('isNumber') })

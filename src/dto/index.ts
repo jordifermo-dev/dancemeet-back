@@ -1,6 +1,7 @@
 export * from './discipline.dto';
 export * from './event-type.dto';
 export * from './event.dto';
+export * from './event-series.dto';
 export * from './favorite.dto';
 export * from './followers.dto';
 export * from './notification.dto';

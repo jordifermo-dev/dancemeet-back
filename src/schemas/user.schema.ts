@@ -14,7 +14,7 @@ export interface UserDocument extends Document {
   longitude: number;
   location?: { type: string; coordinates: number[] };
   distanceRange: number;
-  eventDateFrom?: number;
+  eventDateFrom?: number | null;
   eventDateTo?: number | null;
   disabledNotificationTypes: NotificationType[];
   disciplineIds: string[];

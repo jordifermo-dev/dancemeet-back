@@ -1,8 +1,13 @@
 import { FilterQuery, Model } from 'mongoose';
 import { mapEventToDto } from '../config/mongoose.config';
-import { CreateEventDto, EventDto, UpdateEventDto } from '../dto';
+import { CreateEventDto, CreateEventSeriesDto, EventDto, PatchEventSeriesDto, UpdateEventDto } from '../dto';
 import { EventDocument } from '../schemas/event.schema';
-import { handleDbOperation, isValidObjectId, InvalidIdException, escapeRegex } from '../common';
+import { handleDbOperation, isValidObjectId, InvalidIdException, escapeRegex, RecurrenceOccurrence } from '../common';
+
+/** The subset of CreateEventSeriesDto that's identical across every instance
+ * of a series (everything except the recurrence rule / time-of-day, which
+ * only exist to be expanded, not stored). */
+export type SeriesBaseFields = Omit<CreateEventSeriesDto, 'recurrence' | 'timeFrom' | 'timeTo'>;
 
 export class EventRepository {
   private readonly resourceName = 'Event';
@@ -23,6 +28,132 @@ export class EventRepository {
         createdAt: eventData.createdAt ?? Date.now(),
       });
       return mapEventToDto(createdDocument);
+    });
+  }
+
+  /** Bulk-inserts one Event document per occurrence, all sharing `seriesId`
+   * and stamped with their 1-based position/total - first insertMany in this
+   * repository (see EventService.createEventSeries doc comment for why: no
+   * prior batch-insert precedent existed to follow, so this mirrors
+   * create()'s own per-document `location` derivation instead). */
+  async createSeries(
+    baseFields: SeriesBaseFields,
+    occurrences: RecurrenceOccurrence[],
+    seriesId: string,
+  ): Promise<EventDto[]> {
+    return handleDbOperation(this.resourceName, 'createSeries', async () => {
+      const now = Date.now();
+      const docs = occurrences.map((occurrence, index) => ({
+        ...baseFields,
+        status: 'published',
+        eventDateFrom: occurrence.eventDateFrom,
+        eventDateTo: occurrence.eventDateTo,
+        location: { type: 'Point', coordinates: [baseFields.longitude, baseFields.latitude] },
+        seriesId,
+        seriesIndex: index + 1,
+        seriesTotal: occurrences.length,
+        createdAt: now,
+      }));
+      const createdDocuments = await this.eventModel.insertMany(docs);
+      return createdDocuments.map((document) => mapEventToDto(document));
+    });
+  }
+
+  /** Attaches an already-existing event to a brand-new series as its first
+   * instance (keeps its id/favorites/notification history untouched, only
+   * stamps seriesId/seriesIndex=1/seriesTotal) and bulk-inserts the
+   * remaining occurrences as new documents - same insertMany reasoning as
+   * createSeries() above. `occurrences[0]` must already equal the existing
+   * event's own eventDateFrom/eventDateTo (validated by the caller, see
+   * EventService.attachRecurrenceToEvent), so this never rewrites its dates. */
+  async attachToExistingSeries(
+    existingId: string,
+    baseFields: SeriesBaseFields,
+    seriesId: string,
+    occurrences: RecurrenceOccurrence[],
+  ): Promise<EventDto[]> {
+    return handleDbOperation(this.resourceName, 'attachToExistingSeries', async () => {
+      const now = Date.now();
+      await this.eventModel.findByIdAndUpdate(existingId, {
+        $set: { seriesId, seriesIndex: 1, seriesTotal: occurrences.length, updatedAt: now },
+      });
+      const rest = occurrences.slice(1).map((occurrence, index) => ({
+        ...baseFields,
+        status: 'published',
+        eventDateFrom: occurrence.eventDateFrom,
+        eventDateTo: occurrence.eventDateTo,
+        location: { type: 'Point', coordinates: [baseFields.longitude, baseFields.latitude] },
+        seriesId,
+        seriesIndex: index + 2,
+        seriesTotal: occurrences.length,
+        createdAt: now,
+      }));
+      const createdDocuments = rest.length ? await this.eventModel.insertMany(rest) : [];
+      const updatedExisting = await this.eventModel.findById(existingId).lean();
+      return [
+        ...(updatedExisting ? [mapEventToDto(updatedExisting)] : []),
+        ...createdDocuments.map((document) => mapEventToDto(document)),
+      ];
+    });
+  }
+
+  async findBySeriesId(seriesId: string): Promise<EventDto[]> {
+    return handleDbOperation(this.resourceName, 'findBySeriesId', async () => {
+      const documents = await this.eventModel.find({ seriesId }).sort({ eventDateFrom: 1 }).lean();
+      return documents.map((document) => mapEventToDto(document));
+    });
+  }
+
+  /** Applies every field of `patch` except timeFrom/timeTo (see
+   * bulkShiftSeriesTime below, which needs a per-document date recompute
+   * instead) to every instance of the series in one `updateMany`. */
+  async updateManyBySeriesId(seriesId: string, patch: Omit<PatchEventSeriesDto, 'timeFrom' | 'timeTo'>): Promise<number> {
+    return handleDbOperation(this.resourceName, 'updateManyBySeriesId', async () => {
+      const update =
+        patch.latitude !== undefined && patch.longitude !== undefined
+          ? { ...patch, location: { type: 'Point', coordinates: [patch.longitude, patch.latitude] } }
+          : patch;
+      const result = await this.eventModel.updateMany({ seriesId }, { $set: { ...update, updatedAt: Date.now() } });
+      return result.modifiedCount;
+    });
+  }
+
+  /** Each instance keeps its own date, so shifting "the time of day" for a
+   * whole series can't be a single flat updateMany - reads every instance,
+   * recomputes eventDateFrom/eventDateTo per document (same date, new time,
+   * same duration relative to the old start), and applies them in one
+   * bulkWrite (first bulkWrite in this repository, same reasoning as
+   * createSeries()'s first-insertMany doc comment above). */
+  async bulkShiftSeriesTime(seriesId: string, timeFromHHmm: string, timeToHHmm: string): Promise<number> {
+    return handleDbOperation(this.resourceName, 'bulkShiftSeriesTime', async () => {
+      const documents = await this.eventModel.find({ seriesId }).lean();
+      if (!documents.length) {
+        return 0;
+      }
+      const [fromHours, fromMinutes] = timeFromHHmm.split(':').map(Number);
+      const [toHours, toMinutes] = timeToHHmm.split(':').map(Number);
+      const now = Date.now();
+      const operations = documents.map((document) => {
+        const from = new Date(document.eventDateFrom);
+        from.setHours(fromHours, fromMinutes, 0, 0);
+        const to = new Date(document.eventDateFrom);
+        to.setHours(toHours, toMinutes, 0, 0);
+        return {
+          updateOne: {
+            filter: { _id: document._id },
+            update: { $set: { eventDateFrom: from.getTime(), eventDateTo: to.getTime(), updatedAt: now } },
+          },
+        };
+      });
+      const result = await this.eventModel.bulkWrite(operations);
+      return result.modifiedCount;
+    });
+  }
+
+  async deleteManyBySeriesId(seriesId: string): Promise<number> {
+    return handleDbOperation(this.resourceName, 'deleteManyBySeriesId', async () => {
+      const result = await this.eventModel.deleteMany({ seriesId });
+      return result.deletedCount;
     });
   }
 

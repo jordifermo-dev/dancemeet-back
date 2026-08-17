@@ -88,6 +88,9 @@ export function mapEventToDto(document: any): EventDto {
     city: document.city,
     latitude: document.latitude,
     longitude: document.longitude,
+    seriesId: document.seriesId,
+    seriesIndex: document.seriesIndex,
+    seriesTotal: document.seriesTotal,
     createdAt: document.createdAt,
     updatedAt: document.updatedAt,
   };

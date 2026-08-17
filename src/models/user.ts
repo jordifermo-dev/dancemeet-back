@@ -13,7 +13,7 @@ export interface IUser {
   latitude: number;
   longitude: number;
   distanceRange: number;
-  eventDateFrom?: number;
+  eventDateFrom?: number | null;
   eventDateTo?: number | null;
   disabledNotificationTypes: NotificationType[];
   disciplineIds: string[];
