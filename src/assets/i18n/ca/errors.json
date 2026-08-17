@@ -51,7 +51,9 @@
     "facebook": "Facebook",
     "tiktok": "TikTok",
     "youtube": "YouTube",
-    "website": "Lloc web"
+    "website": "Lloc web",
+    "whatsapp": "WhatsApp",
+    "pinterest": "Pinterest"
   },
   "INVALID_ID": "Id de $t(errors.resources.{resource}) no vàlid: \"{id}\"",
   "RESOURCE_NOT_FOUND": "No s'ha trobat $t(errors.resources.{resource}) amb id \"{identifier}\"",
@@ -85,6 +87,8 @@
     "socialUrlFacebook": "$t(errors.fields.{property}) ha de ser un enllaç de facebook.com",
     "socialUrlTiktok": "$t(errors.fields.{property}) ha de ser un enllaç de tiktok.com",
     "socialUrlYoutube": "$t(errors.fields.{property}) ha de ser un enllaç de youtube.com",
+    "socialUrlWhatsapp": "$t(errors.fields.{property}) ha de ser un enllaç de wa.me o whatsapp.com",
+    "socialUrlPinterest": "$t(errors.fields.{property}) ha de ser un enllaç de pinterest.com",
     "default": "$t(errors.fields.{property}) no és vàlid"
   }
 }

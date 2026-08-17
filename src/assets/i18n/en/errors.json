@@ -51,7 +51,9 @@
     "facebook": "Facebook",
     "tiktok": "TikTok",
     "youtube": "YouTube",
-    "website": "Website"
+    "website": "Website",
+    "whatsapp": "WhatsApp",
+    "pinterest": "Pinterest"
   },
   "INVALID_ID": "Invalid $t(errors.resources.{resource}) id: \"{id}\"",
   "RESOURCE_NOT_FOUND": "$t(errors.resources.{resource}) with id \"{identifier}\" not found",
@@ -85,6 +87,8 @@
     "socialUrlFacebook": "$t(errors.fields.{property}) must be a facebook.com link",
     "socialUrlTiktok": "$t(errors.fields.{property}) must be a tiktok.com link",
     "socialUrlYoutube": "$t(errors.fields.{property}) must be a youtube.com link",
+    "socialUrlWhatsapp": "$t(errors.fields.{property}) must be a wa.me or whatsapp.com link",
+    "socialUrlPinterest": "$t(errors.fields.{property}) must be a pinterest.com link",
     "default": "$t(errors.fields.{property}) is invalid"
   }
 }

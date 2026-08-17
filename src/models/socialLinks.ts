@@ -1,7 +1,9 @@
 export interface ISocialLinks {
-  instagram?: string;
   facebook?: string;
+  instagram?: string;
+  pinterest?: string;
   tiktok?: string;
-  youtube?: string;
   website?: string;
+  whatsapp?: string;
+  youtube?: string;
 }

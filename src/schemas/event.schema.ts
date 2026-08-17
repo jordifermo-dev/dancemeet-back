@@ -29,11 +29,13 @@ export interface EventDocument extends Document {
 
 const SocialLinksSchema = new Schema<ISocialLinks>(
   {
-    instagram: { type: String, trim: true },
     facebook: { type: String, trim: true },
+    instagram: { type: String, trim: true },
+    pinterest: { type: String, trim: true },
     tiktok: { type: String, trim: true },
-    youtube: { type: String, trim: true },
     website: { type: String, trim: true },
+    whatsapp: { type: String, trim: true },
+    youtube: { type: String, trim: true },
   },
   { _id: false },
 );
