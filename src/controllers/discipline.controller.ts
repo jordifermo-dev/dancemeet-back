@@ -20,41 +20,25 @@ export class DisciplineController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async createDiscipline(@Body() disciplineData: CreateDisciplineDto): Promise<DisciplineDto> {
-    try {
-      return await this.disciplineService.createDiscipline(disciplineData);
-    } catch (err) {
-      throw err;
-    }
+    return await this.disciplineService.createDiscipline(disciplineData);
   }
 
   @Public()
   @Get()
   async getAllDisciplines(): Promise<DisciplineDto[]> {
-    try {
-      return await this.disciplineService.getAllDisciplines();
-    } catch (err) {
-      throw err;
-    }
+    return await this.disciplineService.getAllDisciplines();
   }
 
   @Public()
   @Get(':id')
   async getDisciplineById(@Param('id') disciplineId: string): Promise<DisciplineDto> {
-    try {
-      return await this.disciplineService.getDisciplineById(disciplineId);
-    } catch (err) {
-      throw err;
-    }
+    return await this.disciplineService.getDisciplineById(disciplineId);
   }
 
   @Public()
   @Get('name/:name')
   async getDisciplineByName(@Param('name') name: string): Promise<DisciplineDto> {
-    try {
-      return await this.disciplineService.getDisciplineByName(name);
-    } catch (err) {
-      throw err;
-    }
+    return await this.disciplineService.getDisciplineByName(name);
   }
 
   @Put(':id')
@@ -62,32 +46,20 @@ export class DisciplineController {
     @Param('id') disciplineId: string,
     @Body() updateData: UpdateDisciplineDto,
   ): Promise<{ success: boolean }> {
-    try {
-      const success = await this.disciplineService.updateDiscipline(disciplineId, updateData);
-      return { success };
-    } catch (err) {
-      throw err;
-    }
+    const success = await this.disciplineService.updateDiscipline(disciplineId, updateData);
+    return { success };
   }
 
   @Delete(':id')
   async deleteDiscipline(@Param('id') disciplineId: string): Promise<{ success: boolean }> {
-    try {
-      const success = await this.disciplineService.deleteDiscipline(disciplineId);
-      return { success };
-    } catch (err) {
-      throw err;
-    }
+    const success = await this.disciplineService.deleteDiscipline(disciplineId);
+    return { success };
   }
 
   @Public()
   @Get('/count/total')
   async countDisciplines(): Promise<{ count: number }> {
-    try {
-      const count = await this.disciplineService.countDisciplines();
-      return { count };
-    } catch (err) {
-      throw err;
-    }
+    const count = await this.disciplineService.countDisciplines();
+    return { count };
   }
 }

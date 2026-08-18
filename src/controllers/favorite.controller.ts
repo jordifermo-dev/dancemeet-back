@@ -19,65 +19,37 @@ export class FavoriteController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async createFavorite(@Body() favoriteData: CreateFavoriteDto): Promise<FavoriteDto> {
-    try {
-      return await this.favoriteService.createFavorite(favoriteData);
-    } catch (err) {
-      throw err;
-    }
+    return await this.favoriteService.createFavorite(favoriteData);
   }
 
   @Get()
   async getAllFavorites(): Promise<FavoriteDto[]> {
-    try {
-      return await this.favoriteService.getAllFavorites();
-    } catch (err) {
-      throw err;
-    }
+    return await this.favoriteService.getAllFavorites();
   }
 
   @Get(':id')
   async getFavoriteById(@Param('id') favoriteId: string): Promise<FavoriteDto> {
-    try {
-      return await this.favoriteService.getFavoriteById(favoriteId);
-    } catch (err) {
-      throw err;
-    }
+    return await this.favoriteService.getFavoriteById(favoriteId);
   }
 
   @Get('user/:userId')
   async getFavoritesByUser(@Param('userId') userId: string): Promise<FavoriteDto[]> {
-    try {
-      return await this.favoriteService.getFavoritesByUser(userId);
-    } catch (err) {
-      throw err;
-    }
+    return await this.favoriteService.getFavoritesByUser(userId);
   }
 
   @Get('user/:userId/events')
   async getFavoritedEventsDetailed(@Param('userId') userId: string): Promise<FavoritedEventDto[]> {
-    try {
-      return await this.favoriteService.getFavoritedEventsDetailed(userId);
-    } catch (err) {
-      throw err;
-    }
+    return await this.favoriteService.getFavoritedEventsDetailed(userId);
   }
 
   @Get('event/:eventId')
   async getFavoritesByEvent(@Param('eventId') eventId: string): Promise<FavoriteDto[]> {
-    try {
-      return await this.favoriteService.getFavoritesByEvent(eventId);
-    } catch (err) {
-      throw err;
-    }
+    return await this.favoriteService.getFavoritesByEvent(eventId);
   }
 
   @Get('event/:eventId/attendees')
   async getEventAttendeesDetailed(@Param('eventId') eventId: string): Promise<EventAttendeeDto[]> {
-    try {
-      return await this.favoriteService.getEventAttendeesDetailed(eventId);
-    } catch (err) {
-      throw err;
-    }
+    return await this.favoriteService.getEventAttendeesDetailed(eventId);
   }
 
   @Get('check/:userId/:eventId')
@@ -85,12 +57,8 @@ export class FavoriteController {
     @Param('userId') userId: string,
     @Param('eventId') eventId: string,
   ): Promise<{ isFavorited: boolean }> {
-    try {
-      const isFavorited = await this.favoriteService.isFavorited(userId, eventId);
-      return { isFavorited };
-    } catch (err) {
-      throw err;
-    }
+    const isFavorited = await this.favoriteService.isFavorited(userId, eventId);
+    return { isFavorited };
   }
 
   @Post(':userId/:eventId/add')
@@ -98,11 +66,7 @@ export class FavoriteController {
     @Param('userId') userId: string,
     @Param('eventId') eventId: string,
   ): Promise<FavoriteDto> {
-    try {
-      return await this.favoriteService.addToFavorites(userId, eventId);
-    } catch (err) {
-      throw err;
-    }
+    return await this.favoriteService.addToFavorites(userId, eventId);
   }
 
   @Delete(':userId/:eventId/remove')
@@ -110,12 +74,8 @@ export class FavoriteController {
     @Param('userId') userId: string,
     @Param('eventId') eventId: string,
   ): Promise<{ success: boolean }> {
-    try {
-      const success = await this.favoriteService.removeFromFavorites(userId, eventId);
-      return { success };
-    } catch (err) {
-      throw err;
-    }
+    const success = await this.favoriteService.removeFromFavorites(userId, eventId);
+    return { success };
   }
 
   @Post(':userId/series/:seriesId/add')
@@ -124,11 +84,7 @@ export class FavoriteController {
     @Param('userId') userId: string,
     @Param('seriesId') seriesId: string,
   ): Promise<void> {
-    try {
-      await this.favoriteService.addSeriesToFavorites(userId, seriesId);
-    } catch (err) {
-      throw err;
-    }
+    await this.favoriteService.addSeriesToFavorites(userId, seriesId);
   }
 
   @Delete(':userId/series/:seriesId/remove')
@@ -137,11 +93,7 @@ export class FavoriteController {
     @Param('userId') userId: string,
     @Param('seriesId') seriesId: string,
   ): Promise<void> {
-    try {
-      await this.favoriteService.removeSeriesFromFavorites(userId, seriesId);
-    } catch (err) {
-      throw err;
-    }
+    await this.favoriteService.removeSeriesFromFavorites(userId, seriesId);
   }
 
   @Put(':id')
@@ -149,41 +101,25 @@ export class FavoriteController {
     @Param('id') favoriteId: string,
     @Body() updateData: UpdateFavoriteDto,
   ): Promise<{ success: boolean }> {
-    try {
-      const success = await this.favoriteService.updateFavorite(favoriteId, updateData);
-      return { success };
-    } catch (err) {
-      throw err;
-    }
+    const success = await this.favoriteService.updateFavorite(favoriteId, updateData);
+    return { success };
   }
 
   @Delete(':id')
   async deleteFavorite(@Param('id') favoriteId: string): Promise<{ success: boolean }> {
-    try {
-      const success = await this.favoriteService.deleteFavorite(favoriteId);
-      return { success };
-    } catch (err) {
-      throw err;
-    }
+    const success = await this.favoriteService.deleteFavorite(favoriteId);
+    return { success };
   }
 
   @Get('count/user/:userId')
   async countUserFavorites(@Param('userId') userId: string): Promise<{ count: number }> {
-    try {
-      const count = await this.favoriteService.countUserFavorites(userId);
-      return { count };
-    } catch (err) {
-      throw err;
-    }
+    const count = await this.favoriteService.countUserFavorites(userId);
+    return { count };
   }
 
   @Get('count/event/:eventId')
   async countEventFavorites(@Param('eventId') eventId: string): Promise<{ count: number }> {
-    try {
-      const count = await this.favoriteService.countEventFavorites(eventId);
-      return { count };
-    } catch (err) {
-      throw err;
-    }
+    const count = await this.favoriteService.countEventFavorites(eventId);
+    return { count };
   }
 }

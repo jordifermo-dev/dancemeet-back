@@ -19,78 +19,54 @@ export class FavoriteService {
    * Create a new favorite
    */
   async createFavorite(favoriteData: CreateFavoriteDto): Promise<FavoriteDto> {
-    try {
-      return await this.favoriteRepository.create(favoriteData);
-    } catch (err) {
-      throw err;
-    }
+    return await this.favoriteRepository.create(favoriteData);
   }
 
   /**
    * Get favorite by ID
    */
   async getFavoriteById(favoriteId: string): Promise<FavoriteDto> {
-    try {
-      const favorite = await this.favoriteRepository.findById(favoriteId);
-      if (!favorite) {
-        throw new ResourceNotFoundException('Favorite', favoriteId);
-      }
-      return favorite;
-    } catch (err) {
-      throw err;
+    const favorite = await this.favoriteRepository.findById(favoriteId);
+    if (!favorite) {
+      throw new ResourceNotFoundException('Favorite', favoriteId);
     }
+    return favorite;
   }
 
   /**
    * Get all favorites
    */
   async getAllFavorites(): Promise<FavoriteDto[]> {
-    try {
-      return await this.favoriteRepository.findAll();
-    } catch (err) {
-      throw err;
-    }
+    return await this.favoriteRepository.findAll();
   }
 
   /**
    * Update favorite
    */
   async updateFavorite(favoriteId: string, updateData: UpdateFavoriteDto): Promise<boolean> {
-    try {
-      const updated = await this.favoriteRepository.update(favoriteId, updateData);
-      if (!updated) {
-        throw new ResourceNotFoundException('Favorite', favoriteId);
-      }
-      return true;
-    } catch (err) {
-      throw err;
+    const updated = await this.favoriteRepository.update(favoriteId, updateData);
+    if (!updated) {
+      throw new ResourceNotFoundException('Favorite', favoriteId);
     }
+    return true;
   }
 
   /**
    * Delete favorite
    */
   async deleteFavorite(favoriteId: string): Promise<boolean> {
-    try {
-      const deleted = await this.favoriteRepository.delete(favoriteId);
-      if (!deleted) {
-        throw new ResourceNotFoundException('Favorite', favoriteId);
-      }
-      return true;
-    } catch (err) {
-      throw err;
+    const deleted = await this.favoriteRepository.delete(favoriteId);
+    if (!deleted) {
+      throw new ResourceNotFoundException('Favorite', favoriteId);
     }
+    return true;
   }
 
   /**
    * Get all favorites by user
    */
   async getFavoritesByUser(userId: string): Promise<FavoriteDto[]> {
-    try {
-      return await this.favoriteRepository.findByUser(userId);
-    } catch (err) {
-      throw err;
-    }
+    return await this.favoriteRepository.findByUser(userId);
   }
 
   /**
@@ -102,47 +78,39 @@ export class FavoriteService {
    * to signal by also marking it favorited).
    */
   async getFavoritedEventsDetailed(userId: string): Promise<FavoritedEventDto[]> {
-    try {
-      const favorites = await this.favoriteRepository.findByUser(userId);
-      const favoritedEventIds = new Set(favorites.map((f) => f.eventId));
+    const favorites = await this.favoriteRepository.findByUser(userId);
+    const favoritedEventIds = new Set(favorites.map((f) => f.eventId));
 
-      const createdEvents = await this.eventRepository.findByCreator(userId);
-      const createdEventIds = new Set(createdEvents.map((e) => e.id!));
+    const createdEvents = await this.eventRepository.findByCreator(userId);
+    const createdEventIds = new Set(createdEvents.map((e) => e.id!));
 
-      const allEventIds = [...new Set([...favoritedEventIds, ...createdEventIds])];
-      if (!allEventIds.length) {
-        return [];
-      }
-
-      const events = await this.eventRepository.findByIds(allEventIds);
-      const creators = await this.userRepository.findByIds([...new Set(events.map((e) => e.creatorId))]);
-      const creatorNameById = new Map(creators.map((creator) => [creator.id, creator.name]));
-
-      return events
-        .map((event) => {
-          const isCreator = createdEventIds.has(event.id!);
-          const relation: 'creator' | 'favorite' = isCreator ? 'creator' : 'favorite';
-          return {
-            ...event,
-            creatorName: creatorNameById.get(event.creatorId) ?? '',
-            relation,
-          };
-        })
-        .sort((a, b) => b.eventDateFrom - a.eventDateFrom);
-    } catch (err) {
-      throw err;
+    const allEventIds = [...new Set([...favoritedEventIds, ...createdEventIds])];
+    if (!allEventIds.length) {
+      return [];
     }
+
+    const events = await this.eventRepository.findByIds(allEventIds);
+    const creators = await this.userRepository.findByIds([...new Set(events.map((e) => e.creatorId))]);
+    const creatorNameById = new Map(creators.map((creator) => [creator.id, creator.name]));
+
+    return events
+      .map((event) => {
+        const isCreator = createdEventIds.has(event.id!);
+        const relation: 'creator' | 'favorite' = isCreator ? 'creator' : 'favorite';
+        return {
+          ...event,
+          creatorName: creatorNameById.get(event.creatorId) ?? '',
+          relation,
+        };
+      })
+      .sort((a, b) => b.eventDateFrom - a.eventDateFrom);
   }
 
   /**
    * Get all favorites for an event
    */
   async getFavoritesByEvent(eventId: string): Promise<FavoriteDto[]> {
-    try {
-      return await this.favoriteRepository.findByEvent(eventId);
-    } catch (err) {
-      throw err;
-    }
+    return await this.favoriteRepository.findByEvent(eventId);
   }
 
   /**
@@ -151,84 +119,72 @@ export class FavoriteService {
    * hydration pattern as UserService.getFollowersDetailed/getFollowingDetailed.
    */
   async getEventAttendeesDetailed(eventId: string): Promise<EventAttendeeDto[]> {
-    try {
-      const favorites = await this.favoriteRepository.findByEvent(eventId);
-      const users = await this.userRepository.findByIds(favorites.map((f) => f.userId));
-      const userById = new Map(users.map((user) => [user.id, user]));
+    const favorites = await this.favoriteRepository.findByEvent(eventId);
+    const users = await this.userRepository.findByIds(favorites.map((f) => f.userId));
+    const userById = new Map(users.map((user) => [user.id, user]));
 
-      return favorites
-        .map((favorite): EventAttendeeDto | null => {
-          const user = userById.get(favorite.userId);
-          if (!user) {
-            return null;
-          }
-          return {
-            id: user.id!,
-            name: user.name,
-            photoUrl: user.photoUrl,
-            disciplineIds: user.disciplineIds,
-            attendedAt: favorite.createdAt,
-          };
-        })
-        .filter((item): item is EventAttendeeDto => item !== null);
-    } catch (err) {
-      throw err;
-    }
+    return favorites
+      .map((favorite): EventAttendeeDto | null => {
+        const user = userById.get(favorite.userId);
+        if (!user) {
+          return null;
+        }
+        return {
+          id: user.id!,
+          name: user.name,
+          photoUrl: user.photoUrl,
+          disciplineIds: user.disciplineIds,
+          attendedAt: favorite.createdAt,
+        };
+      })
+      .filter((item): item is EventAttendeeDto => item !== null);
   }
 
   /**
    * Check if user has favorited an event
    */
   async isFavorited(userId: string, eventId: string): Promise<boolean> {
-    try {
-      const favorite = await this.favoriteRepository.findByUserAndEvent(userId, eventId);
-      return favorite !== null;
-    } catch (err) {
-      throw err;
-    }
+    const favorite = await this.favoriteRepository.findByUserAndEvent(userId, eventId);
+    return favorite !== null;
   }
 
   /**
    * Add event to favorites
    */
   async addToFavorites(userId: string, eventId: string): Promise<FavoriteDto> {
+    const existing = await this.favoriteRepository.findByUserAndEvent(userId, eventId);
+    if (existing) {
+      throw new BusinessRuleException(
+        `Event "${eventId}" is already in user "${userId}" favorites`,
+        'errors.BUSINESS_ALREADY_FAVORITED',
+        { userId, eventId },
+      );
+    }
     try {
-      const existing = await this.favoriteRepository.findByUserAndEvent(userId, eventId);
-      if (existing) {
+      const created = await this.createFavorite({
+        userId,
+        eventId,
+        createdAt: Date.now(),
+      });
+      const event = await this.eventRepository.findById(eventId);
+      const attendee = await this.userRepository.findById(userId);
+      if (event && attendee && event.creatorId !== userId) {
+        await this.notificationService.notify(event.creatorId, 'event_attendee', {
+          eventId,
+          fromUserId: userId,
+          name: attendee.name,
+          eventTitle: event.title,
+        });
+      }
+      return created;
+    } catch (err) {
+      if (err instanceof DuplicateKeyException) {
         throw new BusinessRuleException(
           `Event "${eventId}" is already in user "${userId}" favorites`,
           'errors.BUSINESS_ALREADY_FAVORITED',
           { userId, eventId },
         );
       }
-      try {
-        const created = await this.createFavorite({
-          userId,
-          eventId,
-          createdAt: Date.now(),
-        });
-        const event = await this.eventRepository.findById(eventId);
-        const attendee = await this.userRepository.findById(userId);
-        if (event && attendee && event.creatorId !== userId) {
-          await this.notificationService.notify(event.creatorId, 'event_attendee', {
-            eventId,
-            fromUserId: userId,
-            name: attendee.name,
-            eventTitle: event.title,
-          });
-        }
-        return created;
-      } catch (err) {
-        if (err instanceof DuplicateKeyException) {
-          throw new BusinessRuleException(
-            `Event "${eventId}" is already in user "${userId}" favorites`,
-            'errors.BUSINESS_ALREADY_FAVORITED',
-            { userId, eventId },
-          );
-        }
-        throw err;
-      }
-    } catch (err) {
       throw err;
     }
   }
@@ -237,21 +193,17 @@ export class FavoriteService {
    * Remove event from favorites
    */
   async removeFromFavorites(userId: string, eventId: string): Promise<boolean> {
-    try {
-      const existing = await this.favoriteRepository.findByUserAndEvent(userId, eventId);
-      if (!existing) {
-        throw new ResourceNotFoundException(
-          'Favorite',
-          `user "${userId}" / event "${eventId}"`,
-          'errors.FAVORITE_NOT_FOUND_BY_USER_EVENT',
-          { userId, eventId },
-        );
-      }
-      await this.favoriteRepository.deleteByUserAndEvent(userId, eventId);
-      return true;
-    } catch (err) {
-      throw err;
+    const existing = await this.favoriteRepository.findByUserAndEvent(userId, eventId);
+    if (!existing) {
+      throw new ResourceNotFoundException(
+        'Favorite',
+        `user "${userId}" / event "${eventId}"`,
+        'errors.FAVORITE_NOT_FOUND_BY_USER_EVENT',
+        { userId, eventId },
+      );
     }
+    await this.favoriteRepository.deleteByUserAndEvent(userId, eventId);
+    return true;
   }
 
   /**
@@ -313,21 +265,13 @@ export class FavoriteService {
    * Count favorites by user
    */
   async countUserFavorites(userId: string): Promise<number> {
-    try {
-      return await this.favoriteRepository.count({ userId });
-    } catch (err) {
-      throw err;
-    }
+    return await this.favoriteRepository.count({ userId });
   }
 
   /**
    * Count favorites by event
    */
   async countEventFavorites(eventId: string): Promise<number> {
-    try {
-      return await this.favoriteRepository.count({ eventId });
-    } catch (err) {
-      throw err;
-    }
+    return await this.favoriteRepository.count({ eventId });
   }
 }

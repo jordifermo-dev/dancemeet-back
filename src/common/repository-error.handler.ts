@@ -42,8 +42,8 @@ export function isDuplicateKeyError(err: unknown): boolean {
  * details. Unknown errors are rethrown as DatabaseException.
  */
 export async function handleDbOperation<T>(
-  operation: string,
   resource: string,
+  operation: string,
   fn: () => Promise<T>,
 ): Promise<T> {
   try {

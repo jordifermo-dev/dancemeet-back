@@ -19,74 +19,42 @@ export class UserController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async createUser(@Body() userData: CreateUserDto): Promise<UserDto> {
-    try {
-      return await this.userService.createUser(userData);
-    } catch (err) {
-      throw err;
-    }
+    return await this.userService.createUser(userData);
   }
 
   @Get()
   async getAllUsers(): Promise<UserDto[]> {
-    try {
-      return await this.userService.getAllUsers();
-    } catch (err) {
-      throw err;
-    }
+    return await this.userService.getAllUsers();
   }
 
   @Get(':id')
   async getUserById(@Param('id') userId: string): Promise<UserDto> {
-    try {
-      return await this.userService.getUserById(userId);
-    } catch (err) {
-      throw err;
-    }
+    return await this.userService.getUserById(userId);
   }
 
   @Get('email/:email')
   async getUserByEmail(@Param('email') email: string): Promise<UserDto> {
-    try {
-      return await this.userService.getUserByEmail(email);
-    } catch (err) {
-      throw err;
-    }
+    return await this.userService.getUserByEmail(email);
   }
 
   @Get('city/:city')
   async getUsersByCity(@Param('city') city: string): Promise<UserDto[]> {
-    try {
-      return await this.userService.getUsersByCity(city);
-    } catch (err) {
-      throw err;
-    }
+    return await this.userService.getUsersByCity(city);
   }
 
   @Get('discipline/:disciplineId')
   async getUsersByDiscipline(@Param('disciplineId') disciplineId: string): Promise<UserDto[]> {
-    try {
-      return await this.userService.getUsersByDiscipline(disciplineId);
-    } catch (err) {
-      throw err;
-    }
+    return await this.userService.getUsersByDiscipline(disciplineId);
   }
 
   @Get('event-type/:eventTypeId')
   async getUsersByEventType(@Param('eventTypeId') eventTypeId: string): Promise<UserDto[]> {
-    try {
-      return await this.userService.getUsersByEventType(eventTypeId);
-    } catch (err) {
-      throw err;
-    }
+    return await this.userService.getUsersByEventType(eventTypeId);
   }
 
   @Get('status/:statusId')
   async getUsersByStatus(@Param('statusId') statusId: string): Promise<UserDto[]> {
-    try {
-      return await this.userService.getUsersByStatus(statusId);
-    } catch (err) {
-      throw err;
-    }
+    return await this.userService.getUsersByStatus(statusId);
   }
 
   @Put(':id')
@@ -94,60 +62,36 @@ export class UserController {
     @Param('id') userId: string,
     @Body() updateData: UpdateUserDto,
   ): Promise<{ success: boolean }> {
-    try {
-      const success = await this.userService.updateUser(userId, updateData);
-      return { success };
-    } catch (err) {
-      throw err;
-    }
+    const success = await this.userService.updateUser(userId, updateData);
+    return { success };
   }
 
   @Delete(':id')
   async deleteUser(@Param('id') userId: string): Promise<{ success: boolean }> {
-    try {
-      const success = await this.userService.deleteUser(userId);
-      return { success };
-    } catch (err) {
-      throw err;
-    }
+    const success = await this.userService.deleteUser(userId);
+    return { success };
   }
 
   @Get(':id/followers')
   async getFollowers(@Param('id') userId: string): Promise<FollowUserDto[]> {
-    try {
-      return await this.userService.getFollowersDetailed(userId);
-    } catch (err) {
-      throw err;
-    }
+    return await this.userService.getFollowersDetailed(userId);
   }
 
   @Get(':id/following')
   async getFollowing(@Param('id') userId: string): Promise<FollowUserDto[]> {
-    try {
-      return await this.userService.getFollowingDetailed(userId);
-    } catch (err) {
-      throw err;
-    }
+    return await this.userService.getFollowingDetailed(userId);
   }
 
   @Post(':id/fcm-token')
   async addFcmToken(@Param('id') userId: string, @Body() body: FcmTokenDto): Promise<{ success: boolean }> {
-    try {
-      const success = await this.userService.addFcmToken(userId, body.token);
-      return { success };
-    } catch (err) {
-      throw err;
-    }
+    const success = await this.userService.addFcmToken(userId, body.token);
+    return { success };
   }
 
   @Delete(':id/fcm-token')
   async removeFcmToken(@Param('id') userId: string, @Body() body: FcmTokenDto): Promise<{ success: boolean }> {
-    try {
-      const success = await this.userService.removeFcmToken(userId, body.token);
-      return { success };
-    } catch (err) {
-      throw err;
-    }
+    const success = await this.userService.removeFcmToken(userId, body.token);
+    return { success };
   }
 
   @Post(':id/block/:blockedId')
@@ -155,11 +99,7 @@ export class UserController {
     @Param('id') userId: string,
     @Param('blockedId') blockedId: string,
   ): Promise<{ success: boolean }> {
-    try {
-      const success = await this.userService.blockUser(userId, blockedId);
-      return { success };
-    } catch (err) {
-      throw err;
-    }
+    const success = await this.userService.blockUser(userId, blockedId);
+    return { success };
   }
 }

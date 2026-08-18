@@ -25,24 +25,20 @@ export class EventService {
    * Create a new event
    */
   async createEvent(eventData: CreateEventDto): Promise<EventDto> {
-    try {
-      if (eventData.eventDateTo <= eventData.eventDateFrom) {
-        throw new BadRequestException('eventDateTo must be after eventDateFrom');
-      }
-      const created = await this.eventRepository.create(eventData);
-      // Organizing an event means attending it - this is what actually
-      // makes the creator count as an attendee (heart filled, attendee
-      // list/count includes them), not just a display-only default.
-      await this.favoriteRepository.create({
-        userId: created.creatorId,
-        eventId: created.id!,
-        createdAt: Date.now(),
-      });
-      await this.notifyAboutNewEvent(created);
-      return created;
-    } catch (err) {
-      throw err;
+    if (eventData.eventDateTo <= eventData.eventDateFrom) {
+      throw new BadRequestException('eventDateTo must be after eventDateFrom');
     }
+    const created = await this.eventRepository.create(eventData);
+    // Organizing an event means attending it - this is what actually
+    // makes the creator count as an attendee (heart filled, attendee
+    // list/count includes them), not just a display-only default.
+    await this.favoriteRepository.create({
+      userId: created.creatorId,
+      eventId: created.id!,
+      createdAt: Date.now(),
+    });
+    await this.notifyAboutNewEvent(created);
+    return created;
   }
 
   /** Two audiences for a freshly published event: people following the
@@ -272,15 +268,11 @@ export class EventService {
    * Get event by ID
    */
   async getEventById(eventId: string): Promise<EventDto> {
-    try {
-      const event = await this.eventRepository.findById(eventId);
-      if (!event) {
-        throw new ResourceNotFoundException('Event', eventId);
-      }
-      return event;
-    } catch (err) {
-      throw err;
+    const event = await this.eventRepository.findById(eventId);
+    if (!event) {
+      throw new ResourceNotFoundException('Event', eventId);
     }
+    return event;
   }
 
   /**
@@ -288,53 +280,41 @@ export class EventService {
    * screen, same idea as SearchedEventDto for the search list.
    */
   async getEventDetail(eventId: string): Promise<SearchedEventDto> {
-    try {
-      const event = await this.eventRepository.findById(eventId);
-      if (!event) {
-        throw new ResourceNotFoundException('Event', eventId);
-      }
-      const creator = await this.userRepository.findById(event.creatorId);
-      return { ...event, creatorName: creator?.name ?? '' };
-    } catch (err) {
-      throw err;
+    const event = await this.eventRepository.findById(eventId);
+    if (!event) {
+      throw new ResourceNotFoundException('Event', eventId);
     }
+    const creator = await this.userRepository.findById(event.creatorId);
+    return { ...event, creatorName: creator?.name ?? '' };
   }
 
   /**
    * Get all events
    */
   async getAllEvents(): Promise<EventDto[]> {
-    try {
-      return await this.eventRepository.findAll();
-    } catch (err) {
-      throw err;
-    }
+    return await this.eventRepository.findAll();
   }
 
   /**
    * Update event
    */
   async updateEvent(eventId: string, updateData: UpdateEventDto): Promise<boolean> {
-    try {
-      if (
-        updateData.eventDateFrom !== undefined &&
-        updateData.eventDateTo !== undefined &&
-        updateData.eventDateTo <= updateData.eventDateFrom
-      ) {
-        throw new BadRequestException('eventDateTo must be after eventDateFrom');
-      }
-      const updated = await this.eventRepository.update(eventId, {
-        ...updateData,
-        updatedAt: Date.now(),
-      });
-      if (!updated) {
-        throw new ResourceNotFoundException('Event', eventId);
-      }
-      await this.notifyAttendeesOfUpdate(eventId);
-      return true;
-    } catch (err) {
-      throw err;
+    if (
+      updateData.eventDateFrom !== undefined &&
+      updateData.eventDateTo !== undefined &&
+      updateData.eventDateTo <= updateData.eventDateFrom
+    ) {
+      throw new BadRequestException('eventDateTo must be after eventDateFrom');
     }
+    const updated = await this.eventRepository.update(eventId, {
+      ...updateData,
+      updatedAt: Date.now(),
+    });
+    if (!updated) {
+      throw new ResourceNotFoundException('Event', eventId);
+    }
+    await this.notifyAttendeesOfUpdate(eventId);
+    return true;
   }
 
   private async notifyAttendeesOfUpdate(eventId: string): Promise<void> {
@@ -356,60 +336,40 @@ export class EventService {
    * Delete event
    */
   async deleteEvent(eventId: string): Promise<boolean> {
-    try {
-      const deleted = await this.eventRepository.delete(eventId);
-      if (!deleted) {
-        throw new ResourceNotFoundException('Event', eventId);
-      }
-      return true;
-    } catch (err) {
-      throw err;
+    const deleted = await this.eventRepository.delete(eventId);
+    if (!deleted) {
+      throw new ResourceNotFoundException('Event', eventId);
     }
+    return true;
   }
 
   /**
    * Find events by discipline
    */
   async getEventsByDiscipline(disciplineId: string): Promise<EventDto[]> {
-    try {
-      return await this.eventRepository.findByDiscipline(disciplineId);
-    } catch (err) {
-      throw err;
-    }
+    return await this.eventRepository.findByDiscipline(disciplineId);
   }
 
   /**
    * Find events by type
    */
   async getEventsByType(typeId: string): Promise<EventDto[]> {
-    try {
-      return await this.eventRepository.findByType(typeId);
-    } catch (err) {
-      throw err;
-    }
+    return await this.eventRepository.findByType(typeId);
   }
 
   /**
    * Find events by city
    */
   async getEventsByCity(city: string): Promise<EventDto[]> {
-    try {
-      return await this.eventRepository.findByCity(city);
-    } catch (err) {
-      throw err;
-    }
+    return await this.eventRepository.findByCity(city);
   }
 
   /**
    * Find upcoming events
    */
   async getUpcomingEvents(currentTime?: number): Promise<EventDto[]> {
-    try {
-      const time = currentTime || Date.now();
-      return await this.eventRepository.findUpcoming(time);
-    } catch (err) {
-      throw err;
-    }
+    const time = currentTime || Date.now();
+    return await this.eventRepository.findUpcoming(time);
   }
 
   /**
@@ -420,11 +380,7 @@ export class EventService {
     longitude: number,
     maxDistance: number,
   ): Promise<EventDto[]> {
-    try {
-      return await this.eventRepository.findNearby(latitude, longitude, maxDistance);
-    } catch (err) {
-      throw err;
-    }
+    return await this.eventRepository.findNearby(latitude, longitude, maxDistance);
   }
 
   /**
@@ -445,44 +401,32 @@ export class EventService {
     search?: string;
     priceOptions?: string[];
   }): Promise<SearchedEventDto[]> {
-    try {
-      const matchingCreatorIds = params.search
-        ? (await this.userRepository.findByNameContains(params.search)).map((u) => u.id!)
-        : undefined;
-      const events = await this.eventRepository.findFiltered({ ...params, matchingCreatorIds });
-      if (!events.length) {
-        return [];
-      }
-      const creators = await this.userRepository.findByIds([...new Set(events.map((e) => e.creatorId))]);
-      const creatorNameById = new Map(creators.map((creator) => [creator.id, creator.name]));
-      return events.map((event) => ({
-        ...event,
-        creatorName: creatorNameById.get(event.creatorId) ?? '',
-      }));
-    } catch (err) {
-      throw err;
+    const matchingCreatorIds = params.search
+      ? (await this.userRepository.findByNameContains(params.search)).map((u) => u.id!)
+      : undefined;
+    const events = await this.eventRepository.findFiltered({ ...params, matchingCreatorIds });
+    if (!events.length) {
+      return [];
     }
+    const creators = await this.userRepository.findByIds([...new Set(events.map((e) => e.creatorId))]);
+    const creatorNameById = new Map(creators.map((creator) => [creator.id, creator.name]));
+    return events.map((event) => ({
+      ...event,
+      creatorName: creatorNameById.get(event.creatorId) ?? '',
+    }));
   }
 
   /**
    * Count all events
    */
   async countEvents(): Promise<number> {
-    try {
-      return await this.eventRepository.count();
-    } catch (err) {
-      throw err;
-    }
+    return await this.eventRepository.count();
   }
 
   /**
    * Count events by creator
    */
   async countEventsByCreator(creatorId: string): Promise<number> {
-    try {
-      return await this.eventRepository.count({ creatorId });
-    } catch (err) {
-      throw err;
-    }
+    return await this.eventRepository.count({ creatorId });
   }
 }

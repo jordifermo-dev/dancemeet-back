@@ -31,97 +31,57 @@ export class EventController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async createEvent(@Body() eventData: CreateEventDto): Promise<EventDto> {
-    try {
-      return await this.eventService.createEvent(eventData);
-    } catch (err) {
-      throw err;
-    }
+    return await this.eventService.createEvent(eventData);
   }
 
   @Post('series')
   @HttpCode(HttpStatus.CREATED)
   async createEventSeries(@Body() seriesData: CreateEventSeriesDto): Promise<{ seriesId: string; events: EventDto[] }> {
-    try {
-      return await this.eventService.createEventSeries(seriesData);
-    } catch (err) {
-      throw err;
-    }
+    return await this.eventService.createEventSeries(seriesData);
   }
 
   @Get()
   async getAllEvents(): Promise<EventDto[]> {
-    try {
-      return await this.eventService.getAllEvents();
-    } catch (err) {
-      throw err;
-    }
+    return await this.eventService.getAllEvents();
   }
 
   // Must come before @Get(':id') below - otherwise ':id' would greedily
   // match the literal "series" path segment as an event id.
   @Get('series/:seriesId')
   async getEventsBySeriesId(@Param('seriesId') seriesId: string): Promise<EventDto[]> {
-    try {
-      return await this.eventService.getEventsBySeriesId(seriesId);
-    } catch (err) {
-      throw err;
-    }
+    return await this.eventService.getEventsBySeriesId(seriesId);
   }
 
   @Get(':id')
   async getEventById(@Param('id') eventId: string): Promise<EventDto> {
-    try {
-      return await this.eventService.getEventById(eventId);
-    } catch (err) {
-      throw err;
-    }
+    return await this.eventService.getEventById(eventId);
   }
 
   @Get(':id/detail')
   async getEventDetail(@Param('id') eventId: string): Promise<SearchedEventDto> {
-    try {
-      return await this.eventService.getEventDetail(eventId);
-    } catch (err) {
-      throw err;
-    }
+    return await this.eventService.getEventDetail(eventId);
   }
 
   @Get('discipline/:disciplineId')
   async getEventsByDiscipline(@Param('disciplineId') disciplineId: string): Promise<EventDto[]> {
-    try {
-      return await this.eventService.getEventsByDiscipline(disciplineId);
-    } catch (err) {
-      throw err;
-    }
+    return await this.eventService.getEventsByDiscipline(disciplineId);
   }
 
   @Get('type/:typeId')
   async getEventsByType(@Param('typeId') typeId: string): Promise<EventDto[]> {
-    try {
-      return await this.eventService.getEventsByType(typeId);
-    } catch (err) {
-      throw err;
-    }
+    return await this.eventService.getEventsByType(typeId);
   }
 
   @Get('city/:city')
   async getEventsByCity(@Param('city') city: string): Promise<EventDto[]> {
-    try {
-      return await this.eventService.getEventsByCity(city);
-    } catch (err) {
-      throw err;
-    }
+    return await this.eventService.getEventsByCity(city);
   }
 
   @Get('/upcoming/list')
   async getUpcomingEvents(
     @Query('currentTime', new ParseIntPipe({ optional: true })) currentTime?: number,
   ): Promise<EventDto[]> {
-    try {
-      return await this.eventService.getUpcomingEvents(currentTime);
-    } catch (err) {
-      throw err;
-    }
+    return await this.eventService.getUpcomingEvents(currentTime);
   }
 
   @Get('/nearby/list')
@@ -130,11 +90,7 @@ export class EventController {
     @Query('longitude', ParseFloatPipe) longitude: number,
     @Query('maxDistance', ParseFloatPipe) maxDistance: number,
   ): Promise<EventDto[]> {
-    try {
-      return await this.eventService.getEventsNearby(latitude, longitude, maxDistance);
-    } catch (err) {
-      throw err;
-    }
+    return await this.eventService.getEventsNearby(latitude, longitude, maxDistance);
   }
 
   @Get('/search/list')
@@ -150,25 +106,21 @@ export class EventController {
     @Query('search') search?: string,
     @Query('priceOptions') priceOptions?: string,
   ): Promise<SearchedEventDto[]> {
-    try {
-      return await this.eventService.searchEvents({
-        // !== undefined (not truthy) - an empty string still means "the
-        // client explicitly sent zero disciplines/types", which must filter
-        // down to zero results rather than being treated as "no filter".
-        disciplineIds: disciplineIds !== undefined ? disciplineIds.split(',').filter(Boolean) : undefined,
-        typeIds: typeIds !== undefined ? typeIds.split(',').filter(Boolean) : undefined,
-        statuses: statuses ? statuses.split(',').filter(Boolean) : undefined,
-        dateFrom,
-        dateTo,
-        latitude,
-        longitude,
-        radius,
-        search,
-        priceOptions: priceOptions !== undefined ? priceOptions.split(',').filter(Boolean) : undefined,
-      });
-    } catch (err) {
-      throw err;
-    }
+    return await this.eventService.searchEvents({
+      // !== undefined (not truthy) - an empty string still means "the
+      // client explicitly sent zero disciplines/types", which must filter
+      // down to zero results rather than being treated as "no filter".
+      disciplineIds: disciplineIds !== undefined ? disciplineIds.split(',').filter(Boolean) : undefined,
+      typeIds: typeIds !== undefined ? typeIds.split(',').filter(Boolean) : undefined,
+      statuses: statuses ? statuses.split(',').filter(Boolean) : undefined,
+      dateFrom,
+      dateTo,
+      latitude,
+      longitude,
+      radius,
+      search,
+      priceOptions: priceOptions !== undefined ? priceOptions.split(',').filter(Boolean) : undefined,
+    });
   }
 
   // Same route-order reasoning as getEventsBySeriesId above - must come
@@ -178,22 +130,14 @@ export class EventController {
     @Param('seriesId') seriesId: string,
     @Body() patch: PatchEventSeriesDto,
   ): Promise<{ modifiedCount: number }> {
-    try {
-      const modifiedCount = await this.eventService.updateEventSeries(seriesId, patch);
-      return { modifiedCount };
-    } catch (err) {
-      throw err;
-    }
+    const modifiedCount = await this.eventService.updateEventSeries(seriesId, patch);
+    return { modifiedCount };
   }
 
   @Delete('series/:seriesId')
   async deleteEventSeries(@Param('seriesId') seriesId: string): Promise<{ deletedCount: number }> {
-    try {
-      const deletedCount = await this.eventService.deleteEventSeries(seriesId);
-      return { deletedCount };
-    } catch (err) {
-      throw err;
-    }
+    const deletedCount = await this.eventService.deleteEventSeries(seriesId);
+    return { deletedCount };
   }
 
   @Put(':id')
@@ -201,22 +145,14 @@ export class EventController {
     @Param('id') eventId: string,
     @Body() updateData: UpdateEventDto,
   ): Promise<{ success: boolean }> {
-    try {
-      const success = await this.eventService.updateEvent(eventId, updateData);
-      return { success };
-    } catch (err) {
-      throw err;
-    }
+    const success = await this.eventService.updateEvent(eventId, updateData);
+    return { success };
   }
 
   @Delete(':id')
   async deleteEvent(@Param('id') eventId: string): Promise<{ success: boolean }> {
-    try {
-      const success = await this.eventService.deleteEvent(eventId);
-      return { success };
-    } catch (err) {
-      throw err;
-    }
+    const success = await this.eventService.deleteEvent(eventId);
+    return { success };
   }
 
   @Patch(':id/recurrence')
@@ -224,30 +160,18 @@ export class EventController {
     @Param('id') eventId: string,
     @Body() dto: AttachRecurrenceDto,
   ): Promise<{ seriesId: string; events: EventDto[] }> {
-    try {
-      return await this.eventService.attachRecurrenceToEvent(eventId, dto.recurrence);
-    } catch (err) {
-      throw err;
-    }
+    return await this.eventService.attachRecurrenceToEvent(eventId, dto.recurrence);
   }
 
   @Get('/count/total')
   async countEvents(): Promise<{ count: number }> {
-    try {
-      const count = await this.eventService.countEvents();
-      return { count };
-    } catch (err) {
-      throw err;
-    }
+    const count = await this.eventService.countEvents();
+    return { count };
   }
 
   @Get('/count/creator/:creatorId')
   async countEventsByCreator(@Param('creatorId') creatorId: string): Promise<{ count: number }> {
-    try {
-      const count = await this.eventService.countEventsByCreator(creatorId);
-      return { count };
-    } catch (err) {
-      throw err;
-    }
+    const count = await this.eventService.countEventsByCreator(creatorId);
+    return { count };
   }
 }
