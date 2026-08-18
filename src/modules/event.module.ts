@@ -1,46 +1,53 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { EventController } from '../controllers/event.controller';
 import { ShareController } from '../controllers/share.controller';
 import { EventService } from '../services/event.service';
 import { EventRepository } from '../repositories/event.repository';
-import { UserRepository } from '../repositories/user.repository';
-import { FollowersRepository } from '../repositories/followers.repository';
-import { FavoriteRepository } from '../repositories/favorite.repository';
+import { UserService } from '../services/user.service';
+import { UserModule } from './user.module';
+import { FollowersService } from '../services/followers.service';
+import { FollowersModule } from './followers.module';
+import { FavoriteService } from '../services/favorite.service';
+import { FavoriteModule } from './favorite.module';
 import { NotificationService } from '../services/notification.service';
 import { NotificationModule } from './notification.module';
-import { EVENT_MODEL, USER_MODEL, FOLLOWERS_MODEL, FAVORITE_MODEL } from '../config/mongoose.config';
+import { EVENT_MODEL } from '../config/mongoose.config';
 import { EventDocument } from '../schemas/event.schema';
-import { UserDocument } from '../schemas/user.schema';
-import { FollowersDocument } from '../schemas/followers.schema';
-import { FavoriteDocument } from '../schemas/favorite.schema';
 
 @Module({
-  imports: [NotificationModule],
+  // FavoriteModule is circular with this one - see FavoriteModule's own
+  // comment for why (auto-favoriting the creator vs. "events I favorited").
+  imports: [UserModule, FollowersModule, forwardRef(() => FavoriteModule), NotificationModule],
   controllers: [EventController, ShareController],
   providers: [
     {
       provide: EventService,
       useFactory: (
         eventModel: Model<EventDocument>,
-        userModel: Model<UserDocument>,
-        followersModel: Model<FollowersDocument>,
-        favoriteModel: Model<FavoriteDocument>,
+        userService: UserService,
+        followersService: FollowersService,
+        favoriteService: FavoriteService,
         notificationService: NotificationService,
       ) => {
         const eventRepository = new EventRepository(eventModel);
-        const userRepository = new UserRepository(userModel);
-        const followersRepository = new FollowersRepository(followersModel);
-        const favoriteRepository = new FavoriteRepository(favoriteModel);
         return new EventService(
           eventRepository,
-          userRepository,
-          followersRepository,
-          favoriteRepository,
+          userService,
+          followersService,
+          favoriteService,
           notificationService,
         );
       },
-      inject: [EVENT_MODEL, USER_MODEL, FOLLOWERS_MODEL, FAVORITE_MODEL, NotificationService],
+      // forwardRef() on the FavoriteService token itself - see
+      // FavoriteModule's identical comment for why the cast is needed and safe.
+      inject: [
+        EVENT_MODEL,
+        UserService,
+        FollowersService,
+        forwardRef(() => FavoriteService) as unknown as typeof FavoriteService,
+        NotificationService,
+      ],
     },
   ],
   exports: [EventService],

@@ -1,4 +1,4 @@
-import { EventRepository, FavoriteRepository, UserRepository } from '../repositories';
+import { FavoriteRepository } from '../repositories';
 import { CreateFavoriteDto, EventAttendeeDto, FavoriteDto, FavoritedEventDto } from '../dto';
 import {
   ResourceNotFoundException,
@@ -6,12 +6,17 @@ import {
   DuplicateKeyException,
 } from '../common';
 import { NotificationService } from './notification.service';
+import { UserService } from './user.service';
+// Type-only: avoids a runtime circular import between favorite.service.ts
+// and event.service.ts (they need each other's data - see FavoriteModule/
+// EventModule's forwardRef() wiring for the actual DI circularity fix).
+import type { EventService } from './event.service';
 
 export class FavoriteService {
   constructor(
     private readonly favoriteRepository: FavoriteRepository,
-    private readonly eventRepository: EventRepository,
-    private readonly userRepository: UserRepository,
+    private readonly eventService: EventService,
+    private readonly userService: UserService,
     private readonly notificationService: NotificationService,
   ) {}
 
@@ -34,7 +39,7 @@ export class FavoriteService {
     const favorites = await this.favoriteRepository.findByUser(userId);
     const favoritedEventIds = new Set(favorites.map((f) => f.eventId));
 
-    const createdEvents = await this.eventRepository.findByCreator(userId);
+    const createdEvents = await this.eventService.findByCreator(userId);
     const createdEventIds = new Set(createdEvents.map((e) => e.id!));
 
     const allEventIds = [...new Set([...favoritedEventIds, ...createdEventIds])];
@@ -42,8 +47,8 @@ export class FavoriteService {
       return [];
     }
 
-    const events = await this.eventRepository.findByIds(allEventIds);
-    const creators = await this.userRepository.findByIds([...new Set(events.map((e) => e.creatorId))]);
+    const events = await this.eventService.findByIds(allEventIds);
+    const creators = await this.userService.findByIds([...new Set(events.map((e) => e.creatorId))]);
     const creatorNameById = new Map(creators.map((creator) => [creator.id, creator.name]));
 
     return events
@@ -66,7 +71,7 @@ export class FavoriteService {
    */
   async getEventAttendeesDetailed(eventId: string): Promise<EventAttendeeDto[]> {
     const favorites = await this.favoriteRepository.findByEvent(eventId);
-    const users = await this.userRepository.findByIds(favorites.map((f) => f.userId));
+    const users = await this.userService.findByIds(favorites.map((f) => f.userId));
     const userById = new Map(users.map((user) => [user.id, user]));
 
     return favorites
@@ -84,6 +89,15 @@ export class FavoriteService {
         };
       })
       .filter((item): item is EventAttendeeDto => item !== null);
+  }
+
+  /**
+   * Raw passthrough - for other services (e.g. EventService's attendee
+   * notification fan-out) that need an event's favoriters without depending
+   * on FavoriteRepository directly.
+   */
+  async findByEvent(eventId: string): Promise<FavoriteDto[]> {
+    return await this.favoriteRepository.findByEvent(eventId);
   }
 
   /**
@@ -112,8 +126,8 @@ export class FavoriteService {
         eventId,
         createdAt: Date.now(),
       });
-      const event = await this.eventRepository.findById(eventId);
-      const attendee = await this.userRepository.findById(userId);
+      const event = await this.eventService.findById(eventId);
+      const attendee = await this.userService.findById(userId);
       if (event && attendee && event.creatorId !== userId) {
         await this.notificationService.notify(event.creatorId, 'event_attendee', {
           eventId,
@@ -160,7 +174,7 @@ export class FavoriteService {
    * notifyAboutRecurringSeries), not once per instance.
    */
   async addSeriesToFavorites(userId: string, seriesId: string): Promise<void> {
-    const events = await this.eventRepository.findBySeriesId(seriesId);
+    const events = await this.eventService.getEventsBySeriesId(seriesId);
     if (!events.length) {
       throw new ResourceNotFoundException('Event series', seriesId);
     }
@@ -182,7 +196,7 @@ export class FavoriteService {
     if (first.creatorId === userId) {
       return;
     }
-    const attendee = await this.userRepository.findById(userId);
+    const attendee = await this.userService.findById(userId);
     if (attendee) {
       await this.notificationService.notify(first.creatorId, 'event_attendee', {
         eventId: first.id!,
@@ -197,7 +211,7 @@ export class FavoriteService {
    * Un-favorites every instance of a recurring series at once.
    */
   async removeSeriesFromFavorites(userId: string, seriesId: string): Promise<void> {
-    const events = await this.eventRepository.findBySeriesId(seriesId);
+    const events = await this.eventService.getEventsBySeriesId(seriesId);
     if (!events.length) {
       throw new ResourceNotFoundException('Event series', seriesId);
     }

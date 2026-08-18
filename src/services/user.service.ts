@@ -1,11 +1,15 @@
-import { FollowersRepository, UserRepository } from '../repositories';
+import { UserRepository } from '../repositories';
 import { CreateUserDto, FollowUserDto, UpdateUserDto, UserDto } from '../dto';
 import { ResourceNotFoundException } from '../common';
+// Type-only: avoids a runtime circular import between followers.service.ts
+// and user.service.ts (see UserModule/FollowersModule's forwardRef() wiring
+// for the actual DI circularity fix).
+import type { FollowersService } from './followers.service';
 
 export class UserService {
   constructor(
     private readonly userRepository: UserRepository,
-    private readonly followersRepository: FollowersRepository,
+    private readonly followersService: FollowersService,
   ) {}
 
   /**
@@ -13,6 +17,46 @@ export class UserService {
    */
   async createUser(user: CreateUserDto): Promise<UserDto> {
     return await this.userRepository.create(user);
+  }
+
+  /**
+   * Raw, tolerant lookup (null if missing, no follower hydration) - for
+   * other services that need a single user without the 404-throwing/
+   * follower-counting behavior of getUserById, so they don't have to depend
+   * on UserRepository directly.
+   */
+  async findById(userId: string): Promise<UserDto | null> {
+    return await this.userRepository.findById(userId);
+  }
+
+  /**
+   * Raw passthrough - for other services that need a batch of users by id
+   * (e.g. hydrating event/favorite creator names) without depending on
+   * UserRepository directly.
+   */
+  async findByIds(userIds: string[]): Promise<UserDto[]> {
+    return await this.userRepository.findByIds(userIds);
+  }
+
+  /**
+   * Raw passthrough - case-insensitive name search, for EventService's
+   * search-by-organizer-name without depending on UserRepository directly.
+   */
+  async findByNameContains(query: string): Promise<UserDto[]> {
+    return await this.userRepository.findByNameContains(query);
+  }
+
+  /**
+   * Raw passthrough - users whose saved preferences match a new event, for
+   * EventService's "preference_new_event" notification fan-out without
+   * depending on UserRepository directly.
+   */
+  async findMatchingEventPreferences(
+    disciplineIds: string[],
+    typeIds: string[],
+    status: string,
+  ): Promise<UserDto[]> {
+    return await this.userRepository.findMatchingEventPreferences(disciplineIds, typeIds, status);
   }
 
   /**
@@ -24,10 +68,10 @@ export class UserService {
       throw new ResourceNotFoundException('User', userId);
     }
 
-    const followers = await this.followersRepository.findByUser(userId);
+    const followers = await this.followersService.findByUser(userId);
     user.followedId = followers.map((f) => f.followerId);
 
-    const following = await this.followersRepository.findByFollower(userId);
+    const following = await this.followersService.findByFollower(userId);
     user.followingId = following.map((f) => f.userId);
 
     return user;
@@ -62,10 +106,10 @@ export class UserService {
       );
     }
 
-    const followers = await this.followersRepository.findByUser(user.id!);
+    const followers = await this.followersService.findByUser(user.id!);
     user.followedId = followers.map((f) => f.followerId);
 
-    const following = await this.followersRepository.findByFollower(user.id!);
+    const following = await this.followersService.findByFollower(user.id!);
     user.followingId = following.map((f) => f.userId);
 
     return user;
@@ -76,7 +120,7 @@ export class UserService {
    * photo) to render a list - sorted/filtered client-side afterwards.
    */
   async getFollowersDetailed(userId: string): Promise<FollowUserDto[]> {
-    const followers = await this.followersRepository.findByUser(userId);
+    const followers = await this.followersService.findByUser(userId);
     return await this.hydrateFollowRelations(followers.map((f) => ({ userId: f.followerId, followedAt: f.createdAt })));
   }
 
@@ -84,7 +128,7 @@ export class UserService {
    * Get the users someone follows, hydrated the same way as getFollowersDetailed.
    */
   async getFollowingDetailed(userId: string): Promise<FollowUserDto[]> {
-    const following = await this.followersRepository.findByFollower(userId);
+    const following = await this.followersService.findByFollower(userId);
     return await this.hydrateFollowRelations(following.map((f) => ({ userId: f.userId, followedAt: f.createdAt })));
   }
 
@@ -122,5 +166,4 @@ export class UserService {
     }
     return true;
   }
-
 }

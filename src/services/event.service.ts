@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { BadRequestException } from '@nestjs/common';
-import { EventRepository, FavoriteRepository, FollowersRepository, UserRepository } from '../repositories';
+import { EventRepository } from '../repositories';
 import { CreateEventDto, CreateEventSeriesDto, EventDto, PatchEventSeriesDto, RecurrenceRuleDto, SearchedEventDto, UpdateEventDto } from '../dto';
 import {
   ResourceNotFoundException,
@@ -11,13 +11,19 @@ import {
   MAX_SERIES_OCCURRENCES,
 } from '../common';
 import { NotificationService } from './notification.service';
+import { UserService } from './user.service';
+import { FollowersService } from './followers.service';
+// Type-only: avoids a runtime circular import between event.service.ts and
+// favorite.service.ts (they need each other's data - see EventModule/
+// FavoriteModule's forwardRef() wiring for the actual DI circularity fix).
+import type { FavoriteService } from './favorite.service';
 
 export class EventService {
   constructor(
     private readonly eventRepository: EventRepository,
-    private readonly userRepository: UserRepository,
-    private readonly followersRepository: FollowersRepository,
-    private readonly favoriteRepository: FavoriteRepository,
+    private readonly userService: UserService,
+    private readonly followersService: FollowersService,
+    private readonly favoriteService: FavoriteService,
     private readonly notificationService: NotificationService,
   ) {}
 
@@ -32,7 +38,7 @@ export class EventService {
     // Organizing an event means attending it - this is what actually
     // makes the creator count as an attendee (heart filled, attendee
     // list/count includes them), not just a display-only default.
-    await this.favoriteRepository.create({
+    await this.favoriteService.createFavorite({
       userId: created.creatorId,
       eventId: created.id!,
       createdAt: Date.now(),
@@ -47,8 +53,8 @@ export class EventService {
    * reached through the first, and the organizer themselves, so nobody gets
    * the same event announced to them twice. */
   private async notifyAboutNewEvent(event: EventDto): Promise<void> {
-    const creator = await this.userRepository.findById(event.creatorId);
-    const followers = await this.followersRepository.findByUser(event.creatorId);
+    const creator = await this.userService.findById(event.creatorId);
+    const followers = await this.followersService.findByUser(event.creatorId);
     const followerIds = followers.map((f) => f.followerId);
     if (followerIds.length) {
       await this.notificationService.notifyMany(followerIds, 'following_new_event', {
@@ -57,7 +63,7 @@ export class EventService {
         name: creator?.name ?? '',
       });
     }
-    const matching = await this.userRepository.findMatchingEventPreferences(
+    const matching = await this.userService.findMatchingEventPreferences(
       event.disciplineIds,
       event.typeIds,
       event.status,
@@ -109,7 +115,7 @@ export class EventService {
     // organizing means attending every instance too.
     await Promise.all(
       events.map((event) =>
-        this.favoriteRepository.create({ userId: event.creatorId, eventId: event.id!, createdAt: Date.now() }),
+        this.favoriteService.createFavorite({ userId: event.creatorId, eventId: event.id!, createdAt: Date.now() }),
       ),
     );
     await this.notifyAboutRecurringSeries(events);
@@ -118,7 +124,7 @@ export class EventService {
 
   private async notifyAboutRecurringSeries(events: EventDto[]): Promise<void> {
     const first = events[0];
-    const followers = await this.followersRepository.findByUser(first.creatorId);
+    const followers = await this.followersService.findByUser(first.creatorId);
     const followerIds = followers.map((f) => f.followerId);
     if (followerIds.length) {
       await this.notificationService.notifyMany(followerIds, 'recurring_series_created', {
@@ -127,7 +133,7 @@ export class EventService {
         count: String(events.length),
       });
     }
-    const matching = await this.userRepository.findMatchingEventPreferences(
+    const matching = await this.userService.findMatchingEventPreferences(
       first.disciplineIds,
       first.typeIds,
       first.status,
@@ -179,7 +185,7 @@ export class EventService {
       return;
     }
     const first = events[0];
-    const attendeeSets = await Promise.all(events.map((event) => this.favoriteRepository.findByEvent(event.id!)));
+    const attendeeSets = await Promise.all(events.map((event) => this.favoriteService.findByEvent(event.id!)));
     const attendeeIds = [...new Set(attendeeSets.flat().map((a) => a.userId))].filter((id) => id !== first.creatorId);
     if (attendeeIds.length) {
       await this.notificationService.notifyMany(attendeeIds, 'event_updated', {
@@ -257,11 +263,37 @@ export class EventService {
       events
         .slice(1)
         .map((event) =>
-          this.favoriteRepository.create({ userId: event.creatorId, eventId: event.id!, createdAt: Date.now() }),
+          this.favoriteService.createFavorite({ userId: event.creatorId, eventId: event.id!, createdAt: Date.now() }),
         ),
     );
     await this.notifyAboutRecurringSeries(events);
     return { seriesId, events };
+  }
+
+  /**
+   * Raw, tolerant lookup (null if missing) - for other services that need a
+   * single event without the 404-throwing behavior of getEventById, so they
+   * don't have to depend on EventRepository directly.
+   */
+  async findById(eventId: string): Promise<EventDto | null> {
+    return await this.eventRepository.findById(eventId);
+  }
+
+  /**
+   * Raw passthrough - for other services that need a batch of events by id
+   * without depending on EventRepository directly.
+   */
+  async findByIds(eventIds: string[]): Promise<EventDto[]> {
+    return await this.eventRepository.findByIds(eventIds);
+  }
+
+  /**
+   * Raw passthrough - for other services (e.g. FavoriteService's "events I
+   * organize or favorited" list) that need a user's created events without
+   * depending on EventRepository directly.
+   */
+  async findByCreator(creatorId: string): Promise<EventDto[]> {
+    return await this.eventRepository.findByCreator(creatorId);
   }
 
   /**
@@ -284,7 +316,7 @@ export class EventService {
     if (!event) {
       throw new ResourceNotFoundException('Event', eventId);
     }
-    const creator = await this.userRepository.findById(event.creatorId);
+    const creator = await this.userService.findById(event.creatorId);
     return { ...event, creatorName: creator?.name ?? '' };
   }
 
@@ -322,7 +354,7 @@ export class EventService {
     if (!event) {
       return;
     }
-    const attendees = await this.favoriteRepository.findByEvent(eventId);
+    const attendees = await this.favoriteService.findByEvent(eventId);
     const attendeeIds = attendees.map((a) => a.userId).filter((id) => id !== event.creatorId);
     if (attendeeIds.length) {
       await this.notificationService.notifyMany(attendeeIds, 'event_updated', {
@@ -402,13 +434,13 @@ export class EventService {
     priceOptions?: string[];
   }): Promise<SearchedEventDto[]> {
     const matchingCreatorIds = params.search
-      ? (await this.userRepository.findByNameContains(params.search)).map((u) => u.id!)
+      ? (await this.userService.findByNameContains(params.search)).map((u) => u.id!)
       : undefined;
     const events = await this.eventRepository.findFiltered({ ...params, matchingCreatorIds });
     if (!events.length) {
       return [];
     }
-    const creators = await this.userRepository.findByIds([...new Set(events.map((e) => e.creatorId))]);
+    const creators = await this.userService.findByIds([...new Set(events.map((e) => e.creatorId))]);
     const creatorNameById = new Map(creators.map((creator) => [creator.id, creator.name]));
     return events.map((event) => ({
       ...event,

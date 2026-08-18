@@ -1,4 +1,4 @@
-import { FilterQuery, Model } from 'mongoose';
+import { Model } from 'mongoose';
 import { mapFollowersToDto } from '../config/mongoose.config';
 import { CreateFollowersDto, FollowersDto } from '../dto';
 import { FollowersDocument } from '../schemas/followers.schema';
@@ -46,12 +46,6 @@ export class FollowersRepository {
   async deleteByUserAndFollower(userId: string, followerId: string): Promise<void> {
     await handleDbOperation(this.resourceName, 'deleteByUserAndFollower', async () => {
       await this.followersModel.deleteOne({ userId, followerId });
-    });
-  }
-
-  async deleteMany(filter: FilterQuery<FollowersDocument>): Promise<void> {
-    await handleDbOperation(this.resourceName, 'deleteMany', async () => {
-      await this.followersModel.deleteMany(filter);
     });
   }
 }

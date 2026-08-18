@@ -1,31 +1,33 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { FollowersController } from '../controllers/followers.controller';
 import { FollowersService } from '../services/followers.service';
 import { FollowersRepository } from '../repositories/followers.repository';
-import { UserRepository } from '../repositories/user.repository';
+import { UserService } from '../services/user.service';
+import { UserModule } from './user.module';
 import { NotificationService } from '../services/notification.service';
 import { NotificationModule } from './notification.module';
-import { FOLLOWERS_MODEL, USER_MODEL } from '../config/mongoose.config';
+import { FOLLOWERS_MODEL } from '../config/mongoose.config';
 import { FollowersDocument } from '../schemas/followers.schema';
-import { UserDocument } from '../schemas/user.schema';
 
 @Module({
-  imports: [NotificationModule],
+  // Circular with UserModule - see UserModule's own comment for why.
+  imports: [forwardRef(() => UserModule), NotificationModule],
   controllers: [FollowersController],
   providers: [
     {
       provide: FollowersService,
       useFactory: (
         followersModel: Model<FollowersDocument>,
-        userModel: Model<UserDocument>,
+        userService: UserService,
         notificationService: NotificationService,
       ) => {
         const followersRepository = new FollowersRepository(followersModel);
-        const userRepository = new UserRepository(userModel);
-        return new FollowersService(followersRepository, userRepository, notificationService);
+        return new FollowersService(followersRepository, userService, notificationService);
       },
-      inject: [FOLLOWERS_MODEL, USER_MODEL, NotificationService],
+      // forwardRef() on the injected token itself - see UserModule's
+      // identical comment for why the cast is needed and safe.
+      inject: [FOLLOWERS_MODEL, forwardRef(() => UserService) as unknown as typeof UserService, NotificationService],
     },
   ],
   exports: [FollowersService],

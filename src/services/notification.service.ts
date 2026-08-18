@@ -10,7 +10,13 @@ import { NotificationType } from '../schemas/notification.schema';
  * same-day reminder cron) goes through - persists the in-app inbox row and
  * best-effort sends a web push. Never throws: a notification failure must
  * never break the action that triggered it (following someone, creating an
- * event, ...), so every public method swallows its own errors and just logs. */
+ * event, ...), so every public method swallows its own errors and just logs.
+ *
+ * Stays on UserRepository directly (not UserService) on purpose: UserModule
+ * already imports FollowersModule (circular, see UserModule/FollowersModule)
+ * which itself imports this module - going through UserService here would
+ * create a 3-hop Notification->User->Followers->Notification cycle for no
+ * real benefit, since this usage is a narrow, tolerant, read-only lookup. */
 export class NotificationService {
   constructor(
     private readonly notificationRepository: NotificationRepository,
