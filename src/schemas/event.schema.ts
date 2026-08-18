@@ -1,5 +1,5 @@
 import { Document, Model, Schema, model } from 'mongoose';
-import { ISocialLinks } from '../models';
+import { ISocialLinks } from '../common';
 
 export interface EventDocument extends Document {
   title: string;

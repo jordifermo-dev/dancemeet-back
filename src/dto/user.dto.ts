@@ -15,7 +15,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
-import { ISocialLinks } from '../models';
+import { ISocialLinks } from '../common';
 import { NOTIFICATION_TYPES, NotificationType } from '../schemas/notification.schema';
 import { SocialLinksDto } from './social-links.dto';
 

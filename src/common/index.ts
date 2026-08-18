@@ -4,3 +4,4 @@ export * from './decorators';
 export * from './escape-regex';
 export * from './notification-i18n';
 export * from './recurrence';
+export * from './social-links';

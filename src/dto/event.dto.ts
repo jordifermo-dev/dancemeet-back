@@ -15,7 +15,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
-import { ISocialLinks } from '../models';
+import { ISocialLinks } from '../common';
 import { SocialLinksDto } from './social-links.dto';
 
 const msg = (rule: string) => i18nValidationMessage(`errors.validation.${rule}`);

@@ -1,4 +1,3 @@
-export { BaseRepository } from './base.repository';
 export { UserRepository } from './user.repository';
 export { EventRepository } from './event.repository';
 export { DisciplineRepository } from './discipline.repository';

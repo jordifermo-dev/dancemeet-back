@@ -113,29 +113,6 @@ export class UserRepository {
     });
   }
 
-  async findNearby(
-    latitude: number,
-    longitude: number,
-    maxDistance: number,
-  ): Promise<UserDto[]> {
-    return handleDbOperation(this.resourceName, 'findNearby', async () => {
-      const documents = await this.userModel
-        .find({
-          location: {
-            $near: {
-              $geometry: {
-                type: 'Point',
-                coordinates: [longitude, latitude],
-              },
-              $maxDistance: maxDistance,
-            },
-          },
-        } as FilterQuery<UserDocument>)
-        .lean();
-      return documents.map((document) => mapUserToDto(document));
-    });
-  }
-
   async count(filter: FilterQuery<UserDocument> = {}): Promise<number> {
     return handleDbOperation(this.resourceName, 'count', async () => {
       return this.userModel.countDocuments(filter);
