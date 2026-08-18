@@ -1,5 +1,5 @@
 import { EventRepository, FavoriteRepository, UserRepository } from '../repositories';
-import { CreateFavoriteDto, EventAttendeeDto, FavoriteDto, FavoritedEventDto, UpdateFavoriteDto } from '../dto';
+import { CreateFavoriteDto, EventAttendeeDto, FavoriteDto, FavoritedEventDto } from '../dto';
 import {
   ResourceNotFoundException,
   BusinessRuleException,
@@ -20,53 +20,6 @@ export class FavoriteService {
    */
   async createFavorite(favoriteData: CreateFavoriteDto): Promise<FavoriteDto> {
     return await this.favoriteRepository.create(favoriteData);
-  }
-
-  /**
-   * Get favorite by ID
-   */
-  async getFavoriteById(favoriteId: string): Promise<FavoriteDto> {
-    const favorite = await this.favoriteRepository.findById(favoriteId);
-    if (!favorite) {
-      throw new ResourceNotFoundException('Favorite', favoriteId);
-    }
-    return favorite;
-  }
-
-  /**
-   * Get all favorites
-   */
-  async getAllFavorites(): Promise<FavoriteDto[]> {
-    return await this.favoriteRepository.findAll();
-  }
-
-  /**
-   * Update favorite
-   */
-  async updateFavorite(favoriteId: string, updateData: UpdateFavoriteDto): Promise<boolean> {
-    const updated = await this.favoriteRepository.update(favoriteId, updateData);
-    if (!updated) {
-      throw new ResourceNotFoundException('Favorite', favoriteId);
-    }
-    return true;
-  }
-
-  /**
-   * Delete favorite
-   */
-  async deleteFavorite(favoriteId: string): Promise<boolean> {
-    const deleted = await this.favoriteRepository.delete(favoriteId);
-    if (!deleted) {
-      throw new ResourceNotFoundException('Favorite', favoriteId);
-    }
-    return true;
-  }
-
-  /**
-   * Get all favorites by user
-   */
-  async getFavoritesByUser(userId: string): Promise<FavoriteDto[]> {
-    return await this.favoriteRepository.findByUser(userId);
   }
 
   /**
@@ -104,13 +57,6 @@ export class FavoriteService {
         };
       })
       .sort((a, b) => b.eventDateFrom - a.eventDateFrom);
-  }
-
-  /**
-   * Get all favorites for an event
-   */
-  async getFavoritesByEvent(eventId: string): Promise<FavoriteDto[]> {
-    return await this.favoriteRepository.findByEvent(eventId);
   }
 
   /**
@@ -259,13 +205,6 @@ export class FavoriteService {
       userId,
       events.map((event) => event.id!),
     );
-  }
-
-  /**
-   * Count favorites by user
-   */
-  async countUserFavorites(userId: string): Promise<number> {
-    return await this.favoriteRepository.count({ userId });
   }
 
   /**

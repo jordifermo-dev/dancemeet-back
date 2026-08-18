@@ -2,49 +2,21 @@ import {
   Controller,
   Get,
   Post,
-  Put,
   Delete,
-  Body,
   Param,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import { FavoriteService } from '../services/favorite.service';
-import { CreateFavoriteDto, EventAttendeeDto, FavoriteDto, FavoritedEventDto, UpdateFavoriteDto } from '../dto';
+import { EventAttendeeDto, FavoriteDto, FavoritedEventDto } from '../dto';
 
 @Controller('api/favorites')
 export class FavoriteController {
   constructor(private favoriteService: FavoriteService) {}
 
-  @Post()
-  @HttpCode(HttpStatus.CREATED)
-  async createFavorite(@Body() favoriteData: CreateFavoriteDto): Promise<FavoriteDto> {
-    return await this.favoriteService.createFavorite(favoriteData);
-  }
-
-  @Get()
-  async getAllFavorites(): Promise<FavoriteDto[]> {
-    return await this.favoriteService.getAllFavorites();
-  }
-
-  @Get(':id')
-  async getFavoriteById(@Param('id') favoriteId: string): Promise<FavoriteDto> {
-    return await this.favoriteService.getFavoriteById(favoriteId);
-  }
-
-  @Get('user/:userId')
-  async getFavoritesByUser(@Param('userId') userId: string): Promise<FavoriteDto[]> {
-    return await this.favoriteService.getFavoritesByUser(userId);
-  }
-
   @Get('user/:userId/events')
   async getFavoritedEventsDetailed(@Param('userId') userId: string): Promise<FavoritedEventDto[]> {
     return await this.favoriteService.getFavoritedEventsDetailed(userId);
-  }
-
-  @Get('event/:eventId')
-  async getFavoritesByEvent(@Param('eventId') eventId: string): Promise<FavoriteDto[]> {
-    return await this.favoriteService.getFavoritesByEvent(eventId);
   }
 
   @Get('event/:eventId/attendees')
@@ -94,27 +66,6 @@ export class FavoriteController {
     @Param('seriesId') seriesId: string,
   ): Promise<void> {
     await this.favoriteService.removeSeriesFromFavorites(userId, seriesId);
-  }
-
-  @Put(':id')
-  async updateFavorite(
-    @Param('id') favoriteId: string,
-    @Body() updateData: UpdateFavoriteDto,
-  ): Promise<{ success: boolean }> {
-    const success = await this.favoriteService.updateFavorite(favoriteId, updateData);
-    return { success };
-  }
-
-  @Delete(':id')
-  async deleteFavorite(@Param('id') favoriteId: string): Promise<{ success: boolean }> {
-    const success = await this.favoriteService.deleteFavorite(favoriteId);
-    return { success };
-  }
-
-  @Get('count/user/:userId')
-  async countUserFavorites(@Param('userId') userId: string): Promise<{ count: number }> {
-    const count = await this.favoriteService.countUserFavorites(userId);
-    return { count };
   }
 
   @Get('count/event/:eventId')

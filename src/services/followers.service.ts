@@ -1,5 +1,5 @@
 import { FollowersRepository, UserRepository } from '../repositories';
-import { CreateFollowersDto, FollowersDto, UpdateFollowersDto } from '../dto';
+import { CreateFollowersDto, FollowersDto } from '../dto';
 import {
   ResourceNotFoundException,
   BusinessRuleException,
@@ -19,68 +19,6 @@ export class FollowersService {
    */
   async createFollower(followerData: CreateFollowersDto): Promise<FollowersDto> {
     return await this.followersRepository.create(followerData);
-  }
-
-  /**
-   * Get follower relationship by ID
-   */
-  async getFollowerById(followerId: string): Promise<FollowersDto> {
-    const relationship = await this.followersRepository.findById(followerId);
-    if (!relationship) {
-      throw new ResourceNotFoundException('Follower', followerId);
-    }
-    return relationship;
-  }
-
-  /**
-   * Get all follower relationships
-   */
-  async getAllFollowers(): Promise<FollowersDto[]> {
-    return await this.followersRepository.findAll();
-  }
-
-  /**
-   * Update follower relationship
-   */
-  async updateFollower(followerId: string, updateData: UpdateFollowersDto): Promise<boolean> {
-    const updated = await this.followersRepository.update(followerId, updateData);
-    if (!updated) {
-      throw new ResourceNotFoundException('Follower', followerId);
-    }
-    return true;
-  }
-
-  /**
-   * Delete follower relationship
-   */
-  async deleteFollower(followerId: string): Promise<boolean> {
-    const deleted = await this.followersRepository.delete(followerId);
-    if (!deleted) {
-      throw new ResourceNotFoundException('Follower', followerId);
-    }
-    return true;
-  }
-
-  /**
-   * Get all followers of a user (users following this user)
-   */
-  async getFollowersOfUser(userId: string): Promise<FollowersDto[]> {
-    return await this.followersRepository.findByUser(userId);
-  }
-
-  /**
-   * Get all users that someone is following
-   */
-  async getFollowingByUser(followerId: string): Promise<FollowersDto[]> {
-    return await this.followersRepository.findByFollower(followerId);
-  }
-
-  /**
-   * Check if user A follows user B
-   */
-  async isFollowing(userId: string, followerId: string): Promise<boolean> {
-    const relationship = await this.followersRepository.findByUserAndFollower(userId, followerId);
-    return relationship !== null;
   }
 
   /**

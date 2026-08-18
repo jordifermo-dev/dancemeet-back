@@ -41,16 +41,3 @@ export class CreateFavoriteDto {
   createdAt?: number;
 }
 
-export class UpdateFavoriteDto {
-  @IsOptional()
-  @IsMongoId({ message: msg('isMongoId') })
-  userId?: string;
-
-  @IsOptional()
-  @IsMongoId({ message: msg('isMongoId') })
-  eventId?: string;
-
-  @IsOptional()
-  @IsNumber({}, { message: msg('isNumber') })
-  createdAt?: number;
-}

@@ -1,4 +1,4 @@
-import { FilterQuery, Model } from 'mongoose';
+import { Model } from 'mongoose';
 import { mapUserToDto } from '../config/mongoose.config';
 import { CreateUserDto, UpdateUserDto, UserDto } from '../dto';
 import { UserDocument } from '../schemas/user.schema';
@@ -29,13 +29,6 @@ export class UserRepository {
     });
   }
 
-  async findAll(): Promise<UserDto[]> {
-    return handleDbOperation(this.resourceName, 'findAll', async () => {
-      const documents = await this.userModel.find({}).sort({ createdAt: 1 }).lean();
-      return documents.map((document) => mapUserToDto(document));
-    });
-  }
-
   async findByIds(ids: string[]): Promise<UserDto[]> {
     return handleDbOperation(this.resourceName, 'findByIds', async () => {
       const validIds = ids.filter((id) => isValidObjectId(id));
@@ -58,16 +51,6 @@ export class UserRepository {
     });
   }
 
-  async delete(id: string): Promise<boolean> {
-    return handleDbOperation(this.resourceName, 'delete', async () => {
-      if (!isValidObjectId(id)) {
-        throw new InvalidIdException(this.resourceName, id);
-      }
-      const deletedDocument = await this.userModel.findByIdAndDelete(id);
-      return !!deletedDocument;
-    });
-  }
-
   async findByEmail(email: string): Promise<UserDto | null> {
     return handleDbOperation(this.resourceName, 'findByEmail', async () => {
       const document = await this.userModel.findOne({ email }).lean();
@@ -82,52 +65,6 @@ export class UserRepository {
     return handleDbOperation(this.resourceName, 'findByNameContains', async () => {
       const documents = await this.userModel.find({ name: { $regex: escapeRegex(query), $options: 'i' } }).lean();
       return documents.map((document) => mapUserToDto(document));
-    });
-  }
-
-  async findByCity(city: string): Promise<UserDto[]> {
-    return handleDbOperation(this.resourceName, 'findByCity', async () => {
-      const documents = await this.userModel.find({ city }).lean();
-      return documents.map((document) => mapUserToDto(document));
-    });
-  }
-
-  async findByDiscipline(disciplineId: string): Promise<UserDto[]> {
-    return handleDbOperation(this.resourceName, 'findByDiscipline', async () => {
-      const documents = await this.userModel.find({ disciplineIds: disciplineId }).lean();
-      return documents.map((document) => mapUserToDto(document));
-    });
-  }
-
-  async findByEventType(eventTypeId: string): Promise<UserDto[]> {
-    return handleDbOperation(this.resourceName, 'findByEventType', async () => {
-      const documents = await this.userModel.find({ eventTypeIds: eventTypeId }).lean();
-      return documents.map((document) => mapUserToDto(document));
-    });
-  }
-
-  async findByStatus(statusId: string): Promise<UserDto[]> {
-    return handleDbOperation(this.resourceName, 'findByStatus', async () => {
-      const documents = await this.userModel.find({ statusIds: statusId }).lean();
-      return documents.map((document) => mapUserToDto(document));
-    });
-  }
-
-  async count(filter: FilterQuery<UserDocument> = {}): Promise<number> {
-    return handleDbOperation(this.resourceName, 'count', async () => {
-      return this.userModel.countDocuments(filter);
-    });
-  }
-
-  async addBlockedId(userId: string, blockedId: string): Promise<boolean> {
-    return handleDbOperation(this.resourceName, 'addBlockedId', async () => {
-      if (!isValidObjectId(userId)) {
-        throw new InvalidIdException(this.resourceName, userId);
-      }
-      const updatedDocument = await this.userModel.findByIdAndUpdate(userId, {
-        $addToSet: { blockedIds: blockedId },
-      });
-      return !!updatedDocument;
     });
   }
 

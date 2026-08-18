@@ -3,7 +3,6 @@ import {
   Get,
   Post,
   Put,
-  Delete,
   Body,
   Param,
   HttpCode,
@@ -22,11 +21,6 @@ export class UserController {
     return await this.userService.createUser(userData);
   }
 
-  @Get()
-  async getAllUsers(): Promise<UserDto[]> {
-    return await this.userService.getAllUsers();
-  }
-
   @Get(':id')
   async getUserById(@Param('id') userId: string): Promise<UserDto> {
     return await this.userService.getUserById(userId);
@@ -37,38 +31,12 @@ export class UserController {
     return await this.userService.getUserByEmail(email);
   }
 
-  @Get('city/:city')
-  async getUsersByCity(@Param('city') city: string): Promise<UserDto[]> {
-    return await this.userService.getUsersByCity(city);
-  }
-
-  @Get('discipline/:disciplineId')
-  async getUsersByDiscipline(@Param('disciplineId') disciplineId: string): Promise<UserDto[]> {
-    return await this.userService.getUsersByDiscipline(disciplineId);
-  }
-
-  @Get('event-type/:eventTypeId')
-  async getUsersByEventType(@Param('eventTypeId') eventTypeId: string): Promise<UserDto[]> {
-    return await this.userService.getUsersByEventType(eventTypeId);
-  }
-
-  @Get('status/:statusId')
-  async getUsersByStatus(@Param('statusId') statusId: string): Promise<UserDto[]> {
-    return await this.userService.getUsersByStatus(statusId);
-  }
-
   @Put(':id')
   async updateUser(
     @Param('id') userId: string,
     @Body() updateData: UpdateUserDto,
   ): Promise<{ success: boolean }> {
     const success = await this.userService.updateUser(userId, updateData);
-    return { success };
-  }
-
-  @Delete(':id')
-  async deleteUser(@Param('id') userId: string): Promise<{ success: boolean }> {
-    const success = await this.userService.deleteUser(userId);
     return { success };
   }
 
@@ -85,21 +53,6 @@ export class UserController {
   @Post(':id/fcm-token')
   async addFcmToken(@Param('id') userId: string, @Body() body: FcmTokenDto): Promise<{ success: boolean }> {
     const success = await this.userService.addFcmToken(userId, body.token);
-    return { success };
-  }
-
-  @Delete(':id/fcm-token')
-  async removeFcmToken(@Param('id') userId: string, @Body() body: FcmTokenDto): Promise<{ success: boolean }> {
-    const success = await this.userService.removeFcmToken(userId, body.token);
-    return { success };
-  }
-
-  @Post(':id/block/:blockedId')
-  async blockUser(
-    @Param('id') userId: string,
-    @Param('blockedId') blockedId: string,
-  ): Promise<{ success: boolean }> {
-    const success = await this.userService.blockUser(userId, blockedId);
     return { success };
   }
 }

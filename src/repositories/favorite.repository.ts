@@ -1,8 +1,8 @@
 import { FilterQuery, Model } from 'mongoose';
 import { mapFavoriteToDto } from '../config/mongoose.config';
-import { CreateFavoriteDto, FavoriteDto, UpdateFavoriteDto } from '../dto';
+import { CreateFavoriteDto, FavoriteDto } from '../dto';
 import { FavoriteDocument } from '../schemas/favorite.schema';
-import { handleDbOperation, isValidObjectId, InvalidIdException } from '../common';
+import { handleDbOperation } from '../common';
 
 export class FavoriteRepository {
   private readonly resourceName = 'Favorite';
@@ -16,47 +16,6 @@ export class FavoriteRepository {
         createdAt: favoriteData.createdAt ?? Date.now(),
       });
       return mapFavoriteToDto(createdDocument);
-    });
-  }
-
-  async findById(id: string): Promise<FavoriteDto | null> {
-    return handleDbOperation(this.resourceName, 'findById', async () => {
-      if (!isValidObjectId(id)) {
-        throw new InvalidIdException(this.resourceName, id);
-      }
-      const document = await this.favoriteModel.findById(id).lean();
-      return document ? mapFavoriteToDto(document) : null;
-    });
-  }
-
-  async findAll(): Promise<FavoriteDto[]> {
-    return handleDbOperation(this.resourceName, 'findAll', async () => {
-      const documents = await this.favoriteModel.find({}).sort({ createdAt: 1 }).lean();
-      return documents.map((document) => mapFavoriteToDto(document));
-    });
-  }
-
-  async update(id: string, document: UpdateFavoriteDto): Promise<boolean> {
-    return handleDbOperation(this.resourceName, 'update', async () => {
-      if (!isValidObjectId(id)) {
-        throw new InvalidIdException(this.resourceName, id);
-      }
-      const updatedDocument = await this.favoriteModel.findByIdAndUpdate(
-        id,
-        { $set: document },
-        { new: true },
-      );
-      return !!updatedDocument;
-    });
-  }
-
-  async delete(id: string): Promise<boolean> {
-    return handleDbOperation(this.resourceName, 'delete', async () => {
-      if (!isValidObjectId(id)) {
-        throw new InvalidIdException(this.resourceName, id);
-      }
-      const deletedDocument = await this.favoriteModel.findByIdAndDelete(id);
-      return !!deletedDocument;
     });
   }
 

@@ -21,17 +21,3 @@ export class CreateFollowersDto {
   @IsNumber({}, { message: msg('isNumber') })
   createdAt?: number;
 }
-
-export class UpdateFollowersDto {
-  @IsOptional()
-  @IsMongoId({ message: msg('isMongoId') })
-  userId?: string;
-
-  @IsOptional()
-  @IsMongoId({ message: msg('isMongoId') })
-  followerId?: string;
-
-  @IsOptional()
-  @IsNumber({}, { message: msg('isNumber') })
-  createdAt?: number;
-}
