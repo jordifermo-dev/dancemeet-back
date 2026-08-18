@@ -255,6 +255,61 @@ export class FavoriteService {
   }
 
   /**
+   * Favorites every instance of a recurring series at once - the events the
+   * user already favorited (e.g. the one they tapped the heart on) are left
+   * alone, only the missing instances get a new Favorite row. Notifies the
+   * organizer once for the whole series (mirrors EventService's own
+   * notifyAboutRecurringSeries), not once per instance.
+   */
+  async addSeriesToFavorites(userId: string, seriesId: string): Promise<void> {
+    const events = await this.eventRepository.findBySeriesId(seriesId);
+    if (!events.length) {
+      throw new ResourceNotFoundException('Event series', seriesId);
+    }
+    const existing = await this.favoriteRepository.findByUserAndEvents(
+      userId,
+      events.map((event) => event.id!),
+    );
+    const alreadyFavoritedIds = new Set(existing.map((favorite) => favorite.eventId));
+    const toCreate = events.filter((event) => !alreadyFavoritedIds.has(event.id!));
+    if (!toCreate.length) {
+      return;
+    }
+    await Promise.all(
+      toCreate.map((event) =>
+        this.favoriteRepository.create({ userId, eventId: event.id!, createdAt: Date.now() }),
+      ),
+    );
+    const first = events[0];
+    if (first.creatorId === userId) {
+      return;
+    }
+    const attendee = await this.userRepository.findById(userId);
+    if (attendee) {
+      await this.notificationService.notify(first.creatorId, 'event_attendee', {
+        eventId: first.id!,
+        fromUserId: userId,
+        name: attendee.name,
+        eventTitle: first.title,
+      });
+    }
+  }
+
+  /**
+   * Un-favorites every instance of a recurring series at once.
+   */
+  async removeSeriesFromFavorites(userId: string, seriesId: string): Promise<void> {
+    const events = await this.eventRepository.findBySeriesId(seriesId);
+    if (!events.length) {
+      throw new ResourceNotFoundException('Event series', seriesId);
+    }
+    await this.favoriteRepository.deleteManyByUserAndEvents(
+      userId,
+      events.map((event) => event.id!),
+    );
+  }
+
+  /**
    * Count favorites by user
    */
   async countUserFavorites(userId: string): Promise<number> {

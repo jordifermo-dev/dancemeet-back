@@ -118,6 +118,32 @@ export class FavoriteController {
     }
   }
 
+  @Post(':userId/series/:seriesId/add')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async addSeriesToFavorites(
+    @Param('userId') userId: string,
+    @Param('seriesId') seriesId: string,
+  ): Promise<void> {
+    try {
+      await this.favoriteService.addSeriesToFavorites(userId, seriesId);
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  @Delete(':userId/series/:seriesId/remove')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeSeriesFromFavorites(
+    @Param('userId') userId: string,
+    @Param('seriesId') seriesId: string,
+  ): Promise<void> {
+    try {
+      await this.favoriteService.removeSeriesFromFavorites(userId, seriesId);
+    } catch (err) {
+      throw err;
+    }
+  }
+
   @Put(':id')
   async updateFavorite(
     @Param('id') favoriteId: string,
