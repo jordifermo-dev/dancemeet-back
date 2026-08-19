@@ -8,15 +8,13 @@ import mongoose from 'mongoose';
 // DNS servers here avoids ECONNREFUSED on querySrv/queryTxt regardless of the
 // machine's network config.
 dns.setServers(['1.1.1.1', '8.8.8.8']);
-import {
-  DisciplineDto,
-  EventTypeDto,
-  EventDto,
-  FavoriteDto,
-  FollowersDto,
-  NotificationDto,
-  UserDto,
-} from '../dto';
+import { DisciplineDto } from '../modules/discipline/discipline.dto';
+import { EventTypeDto } from '../modules/event-type/event-type.dto';
+import { EventDto } from '../modules/event/event.dto';
+import { FavoriteDto } from '../modules/favorite/favorite.dto';
+import { FollowersDto } from '../modules/followers/followers.dto';
+import { NotificationDto } from '../modules/notification/notification.dto';
+import { UserDto } from '../modules/user/user.dto';
 
 export const DISCIPLINE_MODEL = 'DISCIPLINE_MODEL';
 export const EVENT_TYPE_MODEL = 'EVENT_TYPE_MODEL';

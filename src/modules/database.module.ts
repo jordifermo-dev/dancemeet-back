@@ -9,13 +9,13 @@ import {
   NOTIFICATION_MODEL,
   USER_MODEL,
 } from '../config/mongoose.config';
-import { DisciplineModel } from '../schemas/discipline.schema';
-import { EventTypeModel } from '../schemas/event-type.schema';
-import { EventModel } from '../schemas/event.schema';
-import { FavoriteModel } from '../schemas/favorite.schema';
-import { FollowersModel } from '../schemas/followers.schema';
-import { NotificationModel } from '../schemas/notification.schema';
-import { UserModel } from '../schemas/user.schema';
+import { DisciplineModel } from './discipline/discipline.schema';
+import { EventTypeModel } from './event-type/event-type.schema';
+import { EventModel } from './event/event.schema';
+import { FavoriteModel } from './favorite/favorite.schema';
+import { FollowersModel } from './followers/followers.schema';
+import { NotificationModel } from './notification/notification.schema';
+import { UserModel } from './user/user.schema';
 import { HealthModule } from '../health/health.module';
 
 @Global()
