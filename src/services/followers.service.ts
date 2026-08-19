@@ -1,3 +1,4 @@
+import { ModuleRef } from '@nestjs/core';
 import { FollowersRepository } from '../repositories';
 import { CreateFollowersDto, FollowersDto } from '../dto';
 import {
@@ -6,17 +7,22 @@ import {
   DuplicateKeyException,
 } from '../common';
 import { NotificationService } from './notification.service';
-// Type-only: avoids a runtime circular import between user.service.ts and
-// followers.service.ts (they need each other's data - see UserModule/
-// FollowersModule's forwardRef() wiring for the actual DI circularity fix).
-import type { UserService } from './user.service';
+import { UserService } from './user.service';
 
 export class FollowersService {
   constructor(
     private readonly followersRepository: FollowersRepository,
-    private readonly userService: UserService,
+    private readonly moduleRef: ModuleRef,
     private readonly notificationService: NotificationService,
   ) {}
+
+  /**
+   * See UserService.followersService for why this is resolved lazily via
+   * ModuleRef instead of constructor-injected.
+   */
+  private get userService(): UserService {
+    return this.moduleRef.get(UserService, { strict: false });
+  }
 
   /**
    * Create a new follower relationship

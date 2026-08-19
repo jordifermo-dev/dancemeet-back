@@ -1,34 +1,30 @@
 import { forwardRef, Module } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { Model } from 'mongoose';
 import { UserController } from '../controllers/user.controller';
 import { UserService } from '../services/user.service';
 import { UserRepository } from '../repositories/user.repository';
-import { FollowersService } from '../services/followers.service';
 import { FollowersModule } from './followers.module';
 import { USER_MODEL } from '../config/mongoose.config';
 import { UserDocument } from '../schemas/user.schema';
 
 @Module({
-  // Circular: FollowersService.follow() needs a user's name for the
-  // notification, UserService needs FollowersService for follower/following
-  // counts - forwardRef() on both sides (see FollowersModule) is NestJS's
-  // documented way to resolve this without either domain reaching into the
-  // other's repository directly.
+  // Circular with FollowersModule (see that module's comment) - forwardRef()
+  // is still required here for Nest to resolve the *module* graph. UserService
+  // itself no longer constructor-injects FollowersService though: it resolves
+  // it lazily via ModuleRef (see UserService), because a useFactory provider
+  // runs once, synchronously, before a forwardRef()'d circular *provider*
+  // actually exists - injecting it directly here produced null at runtime.
   imports: [forwardRef(() => FollowersModule)],
   controllers: [UserController],
   providers: [
     {
       provide: UserService,
-      useFactory: (userModel: Model<UserDocument>, followersService: FollowersService) => {
+      useFactory: (userModel: Model<UserDocument>, moduleRef: ModuleRef) => {
         const userRepository = new UserRepository(userModel);
-        return new UserService(userRepository, followersService);
+        return new UserService(userRepository, moduleRef);
       },
-      // forwardRef() on the injected token itself, not just the module
-      // import above - the @nestjs/common types for FactoryProvider.inject
-      // don't declare ForwardReference as an allowed element, but Nest's
-      // injector explicitly unwraps a `{ forwardRef: () => X }` object at
-      // runtime (see injector.js), so the cast is safe.
-      inject: [USER_MODEL, forwardRef(() => FollowersService) as unknown as typeof FollowersService],
+      inject: [USER_MODEL, ModuleRef],
     },
   ],
   exports: [UserService],

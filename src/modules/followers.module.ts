@@ -1,9 +1,9 @@
 import { forwardRef, Module } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { Model } from 'mongoose';
 import { FollowersController } from '../controllers/followers.controller';
 import { FollowersService } from '../services/followers.service';
 import { FollowersRepository } from '../repositories/followers.repository';
-import { UserService } from '../services/user.service';
 import { UserModule } from './user.module';
 import { NotificationService } from '../services/notification.service';
 import { NotificationModule } from './notification.module';
@@ -19,15 +19,13 @@ import { FollowersDocument } from '../schemas/followers.schema';
       provide: FollowersService,
       useFactory: (
         followersModel: Model<FollowersDocument>,
-        userService: UserService,
+        moduleRef: ModuleRef,
         notificationService: NotificationService,
       ) => {
         const followersRepository = new FollowersRepository(followersModel);
-        return new FollowersService(followersRepository, userService, notificationService);
+        return new FollowersService(followersRepository, moduleRef, notificationService);
       },
-      // forwardRef() on the injected token itself - see UserModule's
-      // identical comment for why the cast is needed and safe.
-      inject: [FOLLOWERS_MODEL, forwardRef(() => UserService) as unknown as typeof UserService, NotificationService],
+      inject: [FOLLOWERS_MODEL, ModuleRef, NotificationService],
     },
   ],
   exports: [FollowersService],

@@ -1,16 +1,26 @@
+import { ModuleRef } from '@nestjs/core';
 import { UserRepository } from '../repositories';
 import { CreateUserDto, FollowUserDto, UpdateUserDto, UserDto } from '../dto';
 import { ResourceNotFoundException } from '../common';
-// Type-only: avoids a runtime circular import between followers.service.ts
-// and user.service.ts (see UserModule/FollowersModule's forwardRef() wiring
-// for the actual DI circularity fix).
-import type { FollowersService } from './followers.service';
+import { FollowersService } from './followers.service';
 
 export class UserService {
   constructor(
     private readonly userRepository: UserRepository,
-    private readonly followersService: FollowersService,
+    private readonly moduleRef: ModuleRef,
   ) {}
+
+  /**
+   * FollowersService can't be constructor-injected: it depends on UserService
+   * too, and this codebase's useFactory providers run once, synchronously,
+   * before a forwardRef()'d circular provider is actually constructed - the
+   * factory ends up receiving null (this broke login in production). Looking
+   * it up lazily through ModuleRef sidesteps the ordering problem: by the
+   * time any request handler runs, every provider is fully built.
+   */
+  private get followersService(): FollowersService {
+    return this.moduleRef.get(FollowersService, { strict: false });
+  }
 
   /**
    * Create a new user

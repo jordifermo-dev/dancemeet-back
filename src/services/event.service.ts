@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { BadRequestException } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { EventRepository } from '../repositories';
 import { CreateEventDto, CreateEventSeriesDto, EventDto, PatchEventSeriesDto, RecurrenceRuleDto, SearchedEventDto, UpdateEventDto } from '../dto';
 import {
@@ -13,19 +14,24 @@ import {
 import { NotificationService } from './notification.service';
 import { UserService } from './user.service';
 import { FollowersService } from './followers.service';
-// Type-only: avoids a runtime circular import between event.service.ts and
-// favorite.service.ts (they need each other's data - see EventModule/
-// FavoriteModule's forwardRef() wiring for the actual DI circularity fix).
-import type { FavoriteService } from './favorite.service';
+import { FavoriteService } from './favorite.service';
 
 export class EventService {
   constructor(
     private readonly eventRepository: EventRepository,
     private readonly userService: UserService,
     private readonly followersService: FollowersService,
-    private readonly favoriteService: FavoriteService,
+    private readonly moduleRef: ModuleRef,
     private readonly notificationService: NotificationService,
   ) {}
+
+  /**
+   * See UserService.followersService for why this is resolved lazily via
+   * ModuleRef instead of constructor-injected.
+   */
+  private get favoriteService(): FavoriteService {
+    return this.moduleRef.get(FavoriteService, { strict: false });
+  }
 
   /**
    * Create a new event
