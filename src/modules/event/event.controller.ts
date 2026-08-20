@@ -12,7 +12,11 @@ import {
   HttpStatus,
   ParseFloatPipe,
   ParseIntPipe,
+  UseInterceptors,
 } from '@nestjs/common';
+import { CurrentUser } from '../../common';
+import { CurrentUserInterceptor } from '../user/current-user.interceptor';
+import { UserDto } from '../user/user.dto';
 import { EventService } from './event.service';
 import { CreateEventDto, EventDto, SearchedEventDto, UpdateEventDto } from './event.dto';
 import { AttachRecurrenceDto, CreateEventSeriesDto, PatchEventSeriesDto } from './event-series.dto';
@@ -23,14 +27,19 @@ export class EventController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async createEvent(@Body() eventData: CreateEventDto): Promise<EventDto> {
-    return await this.eventService.createEvent(eventData);
+  @UseInterceptors(CurrentUserInterceptor)
+  async createEvent(@Body() eventData: CreateEventDto, @CurrentUser() user: UserDto): Promise<EventDto> {
+    return await this.eventService.createEvent(eventData, user.id!);
   }
 
   @Post('series')
   @HttpCode(HttpStatus.CREATED)
-  async createEventSeries(@Body() seriesData: CreateEventSeriesDto): Promise<{ seriesId: string; events: EventDto[] }> {
-    return await this.eventService.createEventSeries(seriesData);
+  @UseInterceptors(CurrentUserInterceptor)
+  async createEventSeries(
+    @Body() seriesData: CreateEventSeriesDto,
+    @CurrentUser() user: UserDto,
+  ): Promise<{ seriesId: string; events: EventDto[] }> {
+    return await this.eventService.createEventSeries(seriesData, user.id!);
   }
 
   @Get()
@@ -119,41 +128,52 @@ export class EventController {
   // Same route-order reasoning as getEventsBySeriesId above - must come
   // before @Put(':id')/@Delete(':id').
   @Patch('series/:seriesId')
+  @UseInterceptors(CurrentUserInterceptor)
   async updateEventSeries(
     @Param('seriesId') seriesId: string,
     @Body() patch: PatchEventSeriesDto,
+    @CurrentUser() user: UserDto,
   ): Promise<{ modifiedCount: number }> {
-    const modifiedCount = await this.eventService.updateEventSeries(seriesId, patch);
+    const modifiedCount = await this.eventService.updateEventSeries(seriesId, patch, user.id!);
     return { modifiedCount };
   }
 
   @Delete('series/:seriesId')
-  async deleteEventSeries(@Param('seriesId') seriesId: string): Promise<{ deletedCount: number }> {
-    const deletedCount = await this.eventService.deleteEventSeries(seriesId);
+  @UseInterceptors(CurrentUserInterceptor)
+  async deleteEventSeries(
+    @Param('seriesId') seriesId: string,
+    @CurrentUser() user: UserDto,
+  ): Promise<{ deletedCount: number }> {
+    const deletedCount = await this.eventService.deleteEventSeries(seriesId, user.id!);
     return { deletedCount };
   }
 
   @Put(':id')
+  @UseInterceptors(CurrentUserInterceptor)
   async updateEvent(
     @Param('id') eventId: string,
     @Body() updateData: UpdateEventDto,
+    @CurrentUser() user: UserDto,
   ): Promise<{ success: boolean }> {
-    const success = await this.eventService.updateEvent(eventId, updateData);
+    const success = await this.eventService.updateEvent(eventId, updateData, user.id!);
     return { success };
   }
 
   @Delete(':id')
-  async deleteEvent(@Param('id') eventId: string): Promise<{ success: boolean }> {
-    const success = await this.eventService.deleteEvent(eventId);
+  @UseInterceptors(CurrentUserInterceptor)
+  async deleteEvent(@Param('id') eventId: string, @CurrentUser() user: UserDto): Promise<{ success: boolean }> {
+    const success = await this.eventService.deleteEvent(eventId, user.id!);
     return { success };
   }
 
   @Patch(':id/recurrence')
+  @UseInterceptors(CurrentUserInterceptor)
   async attachRecurrenceToEvent(
     @Param('id') eventId: string,
     @Body() dto: AttachRecurrenceDto,
+    @CurrentUser() user: UserDto,
   ): Promise<{ seriesId: string; events: EventDto[] }> {
-    return await this.eventService.attachRecurrenceToEvent(eventId, dto.recurrence);
+    return await this.eventService.attachRecurrenceToEvent(eventId, dto.recurrence, user.id!);
   }
 
   @Get('/count/total')

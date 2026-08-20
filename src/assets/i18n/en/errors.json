@@ -6,7 +6,8 @@
     "EventType": "event type",
     "Favorite": "favorite",
     "Follower": "follower relationship",
-    "Notification": "notification"
+    "Notification": "notification",
+    "EventManagerInvite": "event manager invite"
   },
   "fields": {
     "name": "Name",
@@ -69,6 +70,9 @@
   "BUSINESS_CANNOT_FOLLOW_SELF": "A user cannot follow themselves",
   "BUSINESS_ALREADY_FOLLOWING": "User \"{followerId}\" already follows user \"{userId}\"",
   "BUSINESS_ALREADY_FAVORITED": "Event \"{eventId}\" is already in user \"{userId}\" favorites",
+  "BUSINESS_ALREADY_MANAGER": "User \"{userId}\" is already participating (or has a pending invite) in this event",
+  "FORBIDDEN_MANAGE_EVENT": "You don't have permission to manage this event",
+  "CANNOT_REMOVE_CREATOR": "The event's creator can't be removed",
   "validation": {
     "isNotEmpty": "$t(errors.fields.{property}) should not be empty",
     "isString": "$t(errors.fields.{property}) must be text",

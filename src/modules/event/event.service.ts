@@ -4,12 +4,13 @@ import { ModuleRef } from '@nestjs/core';
 import { EventRepository } from './event.repository';
 import { CreateEventDto, EventDto, SearchedEventDto, UpdateEventDto } from './event.dto';
 import { CreateEventSeriesDto, PatchEventSeriesDto, RecurrenceRuleDto } from './event-series.dto';
-import { ResourceNotFoundException } from '../../common';
+import { ForbiddenActionException, ResourceNotFoundException } from '../../common';
 import { RecurrenceRule, expandRecurrence, formatHHmm, isSameLocalDay, MAX_SERIES_OCCURRENCES } from './recurrence';
 import { NotificationService } from '../notification/notification.service';
 import { UserService } from '../user/user.service';
 import { FollowersService } from '../followers/followers.service';
 import { FavoriteService } from '../favorite/favorite.service';
+import { EventManagerService } from '../event-manager/event-manager.service';
 
 export class EventService {
   constructor(
@@ -28,14 +29,60 @@ export class EventService {
     return this.moduleRef.get(FavoriteService, { strict: false });
   }
 
+  /** Same reasoning as favoriteService above - circular with EventManagerModule. */
+  private get eventManagerService(): EventManagerService {
+    return this.moduleRef.get(EventManagerService, { strict: false });
+  }
+
+  /**
+   * Authorization check shared by every write operation below: the creator
+   * always can, an accepted manager can too, nobody else can. Returns the
+   * event so callers that already need it (updateEvent, deleteEvent, ...)
+   * don't have to fetch it twice.
+   */
+  async assertCanManage(eventId: string, requestingUserId: string): Promise<EventDto> {
+    const event = await this.eventRepository.findById(eventId);
+    if (!event) {
+      throw new ResourceNotFoundException('Event', eventId);
+    }
+    if (event.creatorId === requestingUserId) {
+      return event;
+    }
+    const isManager = await this.eventManagerService.isAcceptedManager(eventId, requestingUserId);
+    if (!isManager) {
+      throw new ForbiddenActionException(
+        `User "${requestingUserId}" is not allowed to manage event "${eventId}"`,
+        'errors.FORBIDDEN_MANAGE_EVENT',
+      );
+    }
+    return event;
+  }
+
+  /** Series-level counterpart of assertCanManage - series routes only have a
+   * seriesId, not a single eventId, so this checks against the series' first
+   * instance (managers are always granted across every instance at once, see
+   * EventManagerService, so any one instance is representative of the whole
+   * series' permissions). */
+  private async assertCanManageSeries(seriesId: string, requestingUserId: string): Promise<EventDto[]> {
+    const events = await this.eventRepository.findBySeriesId(seriesId);
+    if (!events.length) {
+      throw new ResourceNotFoundException('Event series', seriesId);
+    }
+    await this.assertCanManage(events[0].id!, requestingUserId);
+    return events;
+  }
+
   /**
    * Create a new event
    */
-  async createEvent(eventData: CreateEventDto): Promise<EventDto> {
+  async createEvent(eventData: CreateEventDto, requestingUserId: string): Promise<EventDto> {
     if (eventData.eventDateTo <= eventData.eventDateFrom) {
       throw new BadRequestException('eventDateTo must be after eventDateFrom');
     }
-    const created = await this.eventRepository.create(eventData);
+    // creatorId always comes from the authenticated caller, never the
+    // client-supplied DTO - otherwise anyone could create an event that
+    // impersonates someone else as its organizer.
+    const created = await this.eventRepository.create({ ...eventData, creatorId: requestingUserId });
     // Organizing an event means attending it - this is what actually
     // makes the creator count as an attendee (heart filled, attendee
     // list/count includes them), not just a display-only default.
@@ -88,7 +135,10 @@ export class EventService {
    * notifyAboutNewEvent would otherwise fan out N times to the same
    * followers for what the user experiences as one action).
    */
-  async createEventSeries(dto: CreateEventSeriesDto): Promise<{ seriesId: string; events: EventDto[] }> {
+  async createEventSeries(
+    dto: CreateEventSeriesDto,
+    requestingUserId: string,
+  ): Promise<{ seriesId: string; events: EventDto[] }> {
     if (dto.timeTo <= dto.timeFrom) {
       throw new BadRequestException('timeTo must be after timeFrom');
     }
@@ -109,9 +159,15 @@ export class EventService {
         `The recurrence rule would generate ${occurrences.length} events, more than the maximum of ${MAX_SERIES_OCCURRENCES}`,
       );
     }
-    const { recurrence, timeFrom, timeTo, ...baseFields } = dto;
+    // Same reasoning as createEvent() - creatorId always comes from the
+    // authenticated caller, never the client-supplied DTO.
+    const { recurrence, timeFrom, timeTo, creatorId: _creatorId, ...baseFields } = dto;
     const seriesId = randomUUID();
-    const events = await this.eventRepository.createSeries(baseFields, occurrences, seriesId);
+    const events = await this.eventRepository.createSeries(
+      { ...baseFields, creatorId: requestingUserId },
+      occurrences,
+      seriesId,
+    );
     // Same reasoning as createEvent()'s single favorite.create() call -
     // organizing means attending every instance too.
     await Promise.all(
@@ -161,7 +217,12 @@ export class EventService {
    * keeps its own date. Notifies every series attendee once, reusing the
    * existing 'event_updated' type pointed at the series' first instance.
    */
-  async updateEventSeries(seriesId: string, patch: PatchEventSeriesDto): Promise<number> {
+  async updateEventSeries(
+    seriesId: string,
+    patch: PatchEventSeriesDto,
+    requestingUserId: string,
+  ): Promise<number> {
+    await this.assertCanManageSeries(seriesId, requestingUserId);
     const { timeFrom, timeTo, ...rest } = patch;
     if ((timeFrom === undefined) !== (timeTo === undefined)) {
       throw new BadRequestException('timeFrom and timeTo must be provided together');
@@ -200,7 +261,8 @@ export class EventService {
    * Deletes every instance of a series - no attendee notification, matching
    * deleteEvent()'s own single-event behavior (which doesn't notify either).
    */
-  async deleteEventSeries(seriesId: string): Promise<number> {
+  async deleteEventSeries(seriesId: string, requestingUserId: string): Promise<number> {
+    await this.assertCanManageSeries(seriesId, requestingUserId);
     return this.eventRepository.deleteManyBySeriesId(seriesId);
   }
 
@@ -217,7 +279,9 @@ export class EventService {
   async attachRecurrenceToEvent(
     eventId: string,
     ruleDto: RecurrenceRuleDto,
+    requestingUserId: string,
   ): Promise<{ seriesId: string; events: EventDto[] }> {
+    await this.assertCanManage(eventId, requestingUserId);
     const existing = await this.eventRepository.findById(eventId);
     if (!existing) {
       throw new ResourceNotFoundException('Event', eventId);
@@ -331,7 +395,8 @@ export class EventService {
   /**
    * Update event
    */
-  async updateEvent(eventId: string, updateData: UpdateEventDto): Promise<boolean> {
+  async updateEvent(eventId: string, updateData: UpdateEventDto, requestingUserId: string): Promise<boolean> {
+    await this.assertCanManage(eventId, requestingUserId);
     if (
       updateData.eventDateFrom !== undefined &&
       updateData.eventDateTo !== undefined &&
@@ -339,8 +404,12 @@ export class EventService {
     ) {
       throw new BadRequestException('eventDateTo must be after eventDateFrom');
     }
+    // creatorId is never editable via a normal update - allowing it would
+    // let any manager reassign ownership (and therefore who else can be a
+    // manager) outside the invite/accept flow.
+    const { creatorId: _creatorId, ...safeUpdateData } = updateData;
     const updated = await this.eventRepository.update(eventId, {
-      ...updateData,
+      ...safeUpdateData,
       updatedAt: Date.now(),
     });
     if (!updated) {
@@ -368,7 +437,8 @@ export class EventService {
   /**
    * Delete event
    */
-  async deleteEvent(eventId: string): Promise<boolean> {
+  async deleteEvent(eventId: string, requestingUserId: string): Promise<boolean> {
+    await this.assertCanManage(eventId, requestingUserId);
     const deleted = await this.eventRepository.delete(eventId);
     if (!deleted) {
       throw new ResourceNotFoundException('Event', eventId);

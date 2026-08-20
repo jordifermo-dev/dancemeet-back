@@ -5,3 +5,4 @@ export { DatabaseException } from './database.exception';
 export { ResourceNotFoundException } from './resource-not-found.exception';
 export { BusinessRuleException } from './business-rule.exception';
 export { UnauthenticatedException } from './unauthenticated.exception';
+export { ForbiddenActionException } from './forbidden-action.exception';

@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
 import { UserRepository } from './user.repository';
+import { CurrentUserInterceptor } from './current-user.interceptor';
 import { FollowersModule } from '../followers/followers.module';
 import { USER_MODEL } from '../../config/mongoose.config';
 import { UserDocument } from './user.schema';
@@ -26,7 +27,11 @@ import { UserDocument } from './user.schema';
       },
       inject: [USER_MODEL, ModuleRef],
     },
+    // Plain @Injectable() class, not a useFactory - Nest resolves its
+    // UserService constructor param via standard reflection since UserService
+    // is already provided above, same as FirebaseAuthGuard's own Reflector param.
+    CurrentUserInterceptor,
   ],
-  exports: [UserService],
+  exports: [UserService, CurrentUserInterceptor],
 })
 export class UserModule {}

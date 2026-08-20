@@ -8,6 +8,7 @@ import {
   FOLLOWERS_MODEL,
   NOTIFICATION_MODEL,
   USER_MODEL,
+  EVENT_MANAGER_MODEL,
 } from '../config/mongoose.config';
 import { DisciplineModel } from './discipline/discipline.schema';
 import { EventTypeModel } from './event-type/event-type.schema';
@@ -16,6 +17,7 @@ import { FavoriteModel } from './favorite/favorite.schema';
 import { FollowersModel } from './followers/followers.schema';
 import { NotificationModel } from './notification/notification.schema';
 import { UserModel } from './user/user.schema';
+import { EventManagerModel } from './event-manager/event-manager.schema';
 import { HealthModule } from '../health/health.module';
 
 @Global()
@@ -56,6 +58,10 @@ import { HealthModule } from '../health/health.module';
       provide: USER_MODEL,
       useFactory: () => UserModel,
     },
+    {
+      provide: EVENT_MANAGER_MODEL,
+      useFactory: () => EventManagerModel,
+    },
   ],
   exports: [
     'DATABASE',
@@ -66,6 +72,7 @@ import { HealthModule } from '../health/health.module';
     FOLLOWERS_MODEL,
     NOTIFICATION_MODEL,
     USER_MODEL,
+    EVENT_MANAGER_MODEL,
   ],
   imports: [HealthModule],
 })

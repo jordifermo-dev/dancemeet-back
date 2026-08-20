@@ -2,7 +2,7 @@ import { Model } from 'mongoose';
 import { mapUserToDto } from '../../config/mongoose.config';
 import { CreateUserDto, UpdateUserDto, UserDto } from './user.dto';
 import { UserDocument } from './user.schema';
-import { handleDbOperation, isValidObjectId, InvalidIdException, escapeRegex } from '../../common';
+import { handleDbOperation, isValidObjectId, InvalidIdException, stripDiacritics } from '../../common';
 
 export class UserRepository {
   private readonly resourceName = 'User';
@@ -58,13 +58,19 @@ export class UserRepository {
     });
   }
 
-  /** Case-insensitive substring match on `name`, for the event search bar
-   * ("search by title or organizer name"). Escapes regex metacharacters so a
-   * name like "A.J." or "(DJ)" is matched literally, not as a pattern. */
+  /** Case- and accent-insensitive substring match on `name` ("Lluis" also
+   * finds "Lluís"), for the event search bar ("search by title or organizer
+   * name") and the "invite manager" user search. Filtered in application
+   * code, not a $regex: MongoDB's collation (which can compare accented
+   * letters as equal) only applies to comparison/sort operators, not regex
+   * matching, so there's no query-level way to do this. */
   async findByNameContains(query: string): Promise<UserDto[]> {
     return handleDbOperation(this.resourceName, 'findByNameContains', async () => {
-      const documents = await this.userModel.find({ name: { $regex: escapeRegex(query), $options: 'i' } }).lean();
-      return documents.map((document) => mapUserToDto(document));
+      const normalizedQuery = stripDiacritics(query).toLowerCase();
+      const documents = await this.userModel.find().lean();
+      return documents
+        .filter((document) => stripDiacritics(document.name ?? '').toLowerCase().includes(normalizedQuery))
+        .map((document) => mapUserToDto(document));
     });
   }
 

@@ -15,6 +15,7 @@ import { FavoriteDto } from '../modules/favorite/favorite.dto';
 import { FollowersDto } from '../modules/followers/followers.dto';
 import { NotificationDto } from '../modules/notification/notification.dto';
 import { UserDto } from '../modules/user/user.dto';
+import { EventManagerDto } from '../modules/event-manager/event-manager.dto';
 
 export const DISCIPLINE_MODEL = 'DISCIPLINE_MODEL';
 export const EVENT_TYPE_MODEL = 'EVENT_TYPE_MODEL';
@@ -23,6 +24,7 @@ export const FAVORITE_MODEL = 'FAVORITE_MODEL';
 export const FOLLOWERS_MODEL = 'FOLLOWERS_MODEL';
 export const NOTIFICATION_MODEL = 'NOTIFICATION_MODEL';
 export const USER_MODEL = 'USER_MODEL';
+export const EVENT_MANAGER_MODEL = 'EVENT_MANAGER_MODEL';
 
 export async function connectMongoose(): Promise<typeof mongoose> {
   const uri = process.env.MONGODB_URI;
@@ -100,6 +102,19 @@ export function mapFavoriteToDto(document: any): FavoriteDto {
     userId: document.userId,
     eventId: document.eventId,
     createdAt: document.createdAt,
+  };
+}
+
+export function mapEventManagerToDto(document: any): EventManagerDto {
+  return {
+    id: document._id?.toString(),
+    eventId: document.eventId,
+    userId: document.userId,
+    invitedByUserId: document.invitedByUserId,
+    role: document.role,
+    status: document.status,
+    createdAt: document.createdAt,
+    respondedAt: document.respondedAt,
   };
 }
 

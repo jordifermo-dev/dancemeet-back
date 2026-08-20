@@ -6,7 +6,8 @@
     "EventType": "tipus d'esdeveniment",
     "Favorite": "preferit",
     "Follower": "relació de seguiment",
-    "Notification": "notificació"
+    "Notification": "notificació",
+    "EventManagerInvite": "invitació de gestor d'esdeveniment"
   },
   "fields": {
     "name": "Nom",
@@ -69,6 +70,9 @@
   "BUSINESS_CANNOT_FOLLOW_SELF": "Un usuari no es pot seguir a si mateix",
   "BUSINESS_ALREADY_FOLLOWING": "L'usuari \"{followerId}\" ja segueix l'usuari \"{userId}\"",
   "BUSINESS_ALREADY_FAVORITED": "L'esdeveniment \"{eventId}\" ja és als preferits de l'usuari \"{userId}\"",
+  "BUSINESS_ALREADY_MANAGER": "L'usuari \"{userId}\" ja participa (o té una invitació pendent) en aquest esdeveniment",
+  "FORBIDDEN_MANAGE_EVENT": "No tens permís per gestionar aquest esdeveniment",
+  "CANNOT_REMOVE_CREATOR": "No es pot eliminar el creador de l'esdeveniment",
   "validation": {
     "isNotEmpty": "$t(errors.fields.{property}) no pot estar buit",
     "isString": "$t(errors.fields.{property}) ha de ser text",

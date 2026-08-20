@@ -9,6 +9,7 @@ import {
 import { NotificationService } from '../notification/notification.service';
 import { UserService } from '../user/user.service';
 import { EventService } from '../event/event.service';
+import { EventManagerService } from '../event-manager/event-manager.service';
 
 export class FavoriteService {
   constructor(
@@ -24,6 +25,12 @@ export class FavoriteService {
    */
   private get eventService(): EventService {
     return this.moduleRef.get(EventService, { strict: false });
+  }
+
+  /** Same reasoning as eventService above - circular with EventManagerModule
+   * (EventManagerService.respondToInvite calls ensureFavoritedMany below). */
+  private get eventManagerService(): EventManagerService {
+    return this.moduleRef.get(EventManagerService, { strict: false });
   }
 
   /**
@@ -47,6 +54,12 @@ export class FavoriteService {
 
     const createdEvents = await this.eventService.findByCreator(userId);
     const createdEventIds = new Set(createdEvents.map((e) => e.id!));
+    // An accepted manager has the same organizer-level relationship to the
+    // event as its creator (see EventManagerService.respondToInvite, which
+    // already auto-favorites them on accept the same way createEvent() does
+    // for the creator) - treated identically here so "Organizas" shows for
+    // both, not just the literal creatorId match.
+    const managedEventIds = new Set(await this.eventManagerService.getAcceptedEventIdsForUser(userId));
 
     const allEventIds = [...new Set([...favoritedEventIds, ...createdEventIds])];
     if (!allEventIds.length) {
@@ -59,7 +72,7 @@ export class FavoriteService {
 
     return events
       .map((event) => {
-        const isCreator = createdEventIds.has(event.id!);
+        const isCreator = createdEventIds.has(event.id!) || managedEventIds.has(event.id!);
         const relation: 'creator' | 'favorite' = isCreator ? 'creator' : 'favorite';
         return {
           ...event,
@@ -232,5 +245,44 @@ export class FavoriteService {
    */
   async countEventFavorites(eventId: string): Promise<number> {
     return await this.favoriteRepository.count({ eventId });
+  }
+
+  /**
+   * Idempotent bulk-favorite - creates a Favorite row for any of the given
+   * events the user doesn't already have one for, skips the rest. Unlike
+   * addToFavorites/addSeriesToFavorites (a user-initiated "I'm attending"
+   * action that notifies the organizer), this has no notification - it's the
+   * automatic side effect of accepting a manager invite, mirroring
+   * EventService.createEvent's own auto-favorite for the creator. Used by
+   * EventManagerService.respondToInvite.
+   */
+  async ensureFavoritedMany(userId: string, eventIds: string[]): Promise<void> {
+    if (!eventIds.length) {
+      return;
+    }
+    const existing = await this.favoriteRepository.findByUserAndEvents(userId, eventIds);
+    const alreadyFavoritedIds = new Set(existing.map((favorite) => favorite.eventId));
+    const toCreate = eventIds.filter((eventId) => !alreadyFavoritedIds.has(eventId));
+    if (!toCreate.length) {
+      return;
+    }
+    await Promise.all(
+      toCreate.map((eventId) => this.favoriteRepository.create({ userId, eventId, createdAt: Date.now() })),
+    );
+  }
+
+  /**
+   * Idempotent bulk-unfavorite (mirror of ensureFavoritedMany above) - used
+   * by EventManagerService.removeParticipant so an organizer forcing someone
+   * off the attendee list strips their attendance across every instance of a
+   * recurring series in one call, without erroring on instances they never
+   * favorited in the first place. Returns how many rows were actually
+   * removed, so the caller can tell "was attending" from "wasn't".
+   */
+  async removeFavoritedMany(userId: string, eventIds: string[]): Promise<number> {
+    if (!eventIds.length) {
+      return 0;
+    }
+    return await this.favoriteRepository.deleteManyByUserAndEvents(userId, eventIds);
   }
 }

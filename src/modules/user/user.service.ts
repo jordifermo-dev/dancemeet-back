@@ -57,6 +57,16 @@ export class UserService {
   }
 
   /**
+   * Raw, tolerant lookup (null if missing, no follower hydration) - for
+   * CurrentUserInterceptor, which resolves the authenticated Firebase
+   * identity's app user on every request that needs it, without depending
+   * on UserRepository directly.
+   */
+  async findByEmail(email: string): Promise<UserDto | null> {
+    return await this.userRepository.findByEmail(email);
+  }
+
+  /**
    * Raw passthrough - users whose saved preferences match a new event, for
    * EventService's "preference_new_event" notification fan-out without
    * depending on UserRepository directly.

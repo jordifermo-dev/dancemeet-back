@@ -5,6 +5,7 @@ import {
   Put,
   Body,
   Param,
+  Query,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -19,6 +20,17 @@ export class UserController {
   @HttpCode(HttpStatus.CREATED)
   async createUser(@Body() userData: CreateUserDto): Promise<UserDto> {
     return await this.userService.createUser(userData);
+  }
+
+  // Must come before @Get(':id') below - a literal "search" segment would
+  // otherwise be swallowed as an :id value (same route-order reasoning used
+  // throughout EventController for its 'series/:seriesId' routes).
+  @Get('search/list')
+  async searchUsers(@Query('q') query?: string): Promise<UserDto[]> {
+    const trimmed = query?.trim() ?? '';
+    // An empty/blank query would otherwise match everyone (findByNameContains
+    // is a substring regex) - require at least something to search for.
+    return trimmed ? await this.userService.findByNameContains(trimmed) : [];
   }
 
   @Get(':id')

@@ -36,6 +36,8 @@ const TEMPLATE_KEYS: Record<NotificationType, { title: string; body: string }> =
   following_new_event: { title: 'followingNewEventTitle', body: 'followingNewEventBody' },
   preference_new_event: { title: 'preferenceNewEventTitle', body: 'preferenceNewEventBody' },
   recurring_series_created: { title: 'recurringSeriesCreatedTitle', body: 'recurringSeriesCreatedBody' },
+  event_manager_invite: { title: 'eventManagerInviteTitle', body: 'eventManagerInviteBody' },
+  event_attendee_invite: { title: 'eventAttendeeInviteTitle', body: 'eventAttendeeInviteBody' },
 };
 
 export function renderNotification(

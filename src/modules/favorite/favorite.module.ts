@@ -5,6 +5,7 @@ import { FavoriteController } from './favorite.controller';
 import { FavoriteService } from './favorite.service';
 import { FavoriteRepository } from './favorite.repository';
 import { EventModule } from '../event/event.module';
+import { EventManagerModule } from '../event-manager/event-manager.module';
 import { UserService } from '../user/user.service';
 import { UserModule } from '../user/user.module';
 import { NotificationService } from '../notification/notification.service';
@@ -15,11 +16,11 @@ import { FavoriteDocument } from './favorite.schema';
 @Module({
   // Circular with EventModule - EventService auto-favorites the creator on
   // create, FavoriteService needs EventService for "events I organize or
-  // favorited" and attendee-list lookups. forwardRef() here still resolves
-  // the *module* graph; FavoriteService itself resolves EventService lazily
-  // via ModuleRef (see FavoriteService) - see EventModule's identical
-  // comment for why.
-  imports: [forwardRef(() => EventModule), UserModule, NotificationModule],
+  // favorited" and attendee-list lookups. Also circular with
+  // EventManagerModule - see that module's own comment for why. forwardRef()
+  // here still resolves the *module* graph in both cases; FavoriteService
+  // itself resolves each lazily via ModuleRef (see FavoriteService).
+  imports: [forwardRef(() => EventModule), forwardRef(() => EventManagerModule), UserModule, NotificationModule],
   controllers: [FavoriteController],
   providers: [
     {

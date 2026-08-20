@@ -18,6 +18,7 @@ import {
   UploadModule,
   NotificationModule,
   EventReminderModule,
+  EventManagerModule,
 } from './modules';
 import { HealthModule } from './health/health.module';
 
@@ -43,6 +44,7 @@ import { HealthModule } from './health/health.module';
     UploadModule,
     NotificationModule,
     EventReminderModule,
+    EventManagerModule,
     HealthModule,
   ],
   controllers: [AppController],

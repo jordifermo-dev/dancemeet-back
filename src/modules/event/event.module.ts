@@ -10,19 +10,28 @@ import { UserModule } from '../user/user.module';
 import { FollowersService } from '../followers/followers.service';
 import { FollowersModule } from '../followers/followers.module';
 import { FavoriteModule } from '../favorite/favorite.module';
+import { EventManagerModule } from '../event-manager/event-manager.module';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationModule } from '../notification/notification.module';
 import { EVENT_MODEL } from '../../config/mongoose.config';
 import { EventDocument } from './event.schema';
 
 @Module({
-  // FavoriteModule is circular with this one - see FavoriteModule's own
-  // comment for why (auto-favoriting the creator vs. "events I favorited").
-  // forwardRef() here still resolves the *module* graph; EventService itself
-  // resolves FavoriteService lazily via ModuleRef (see EventService), because
-  // constructor-injecting a forwardRef()'d circular provider through a
-  // useFactory produced null at runtime.
-  imports: [UserModule, FollowersModule, forwardRef(() => FavoriteModule), NotificationModule],
+  // FavoriteModule and EventManagerModule are both circular with this one -
+  // see FavoriteModule's own comment for why (auto-favoriting the creator vs.
+  // "events I favorited"), and EventManagerModule's (assertCanManage needs
+  // EventManagerService, invites need the event back). forwardRef() here
+  // still resolves the *module* graph; EventService itself resolves both
+  // lazily via ModuleRef (see EventService), because constructor-injecting a
+  // forwardRef()'d circular provider through a useFactory produced null at
+  // runtime.
+  imports: [
+    UserModule,
+    FollowersModule,
+    forwardRef(() => FavoriteModule),
+    forwardRef(() => EventManagerModule),
+    NotificationModule,
+  ],
   controllers: [EventController, ShareController],
   providers: [
     {

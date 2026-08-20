@@ -12,5 +12,9 @@
   "preferenceNewEventTitle": "Esdeveniment per a tu",
   "preferenceNewEventBody": "S'ha publicat \"{{eventTitle}}\", et pot interessar",
   "recurringSeriesCreatedTitle": "Nou esdeveniment recurrent",
-  "recurringSeriesCreatedBody": "\"{{eventTitle}}\" és un esdeveniment nou que es repeteix {{count}} vegades"
+  "recurringSeriesCreatedBody": "\"{{eventTitle}}\" és un esdeveniment nou que es repeteix {{count}} vegades",
+  "eventManagerInviteTitle": "Invitació a organitzar esdeveniment",
+  "eventManagerInviteBody": "{{name}} t'ha convidat a ser organitzador/a de \"{{eventTitle}}\"",
+  "eventAttendeeInviteTitle": "Invitació a assistir",
+  "eventAttendeeInviteBody": "{{name}} t'ha convidat a assistir a \"{{eventTitle}}\""
 }
