@@ -16,6 +16,7 @@ import { FollowersDto } from '../modules/followers/followers.dto';
 import { NotificationDto } from '../modules/notification/notification.dto';
 import { UserDto } from '../modules/user/user.dto';
 import { EventManagerDto } from '../modules/event-manager/event-manager.dto';
+import { GalleryPhotoDto } from '../modules/gallery/gallery.dto';
 
 export const DISCIPLINE_MODEL = 'DISCIPLINE_MODEL';
 export const EVENT_TYPE_MODEL = 'EVENT_TYPE_MODEL';
@@ -25,6 +26,7 @@ export const FOLLOWERS_MODEL = 'FOLLOWERS_MODEL';
 export const NOTIFICATION_MODEL = 'NOTIFICATION_MODEL';
 export const USER_MODEL = 'USER_MODEL';
 export const EVENT_MANAGER_MODEL = 'EVENT_MANAGER_MODEL';
+export const GALLERY_MODEL = 'GALLERY_MODEL';
 
 export async function connectMongoose(): Promise<typeof mongoose> {
   const uri = process.env.MONGODB_URI;
@@ -83,6 +85,10 @@ export function mapEventToDto(document: any): EventDto {
     status: document.status,
     isFree: document.isFree,
     price: document.price,
+    // .lean() skips schema-default hydration, so events created before this
+    // field existed come back with it truly undefined - fall back to the
+    // schema's own default (true) rather than leaving it undefined.
+    allowAttendeePhotos: document.allowAttendeePhotos ?? true,
     creatorId: document.creatorId,
     address: document.address,
     city: document.city,
@@ -115,6 +121,16 @@ export function mapEventManagerToDto(document: any): EventManagerDto {
     status: document.status,
     createdAt: document.createdAt,
     respondedAt: document.respondedAt,
+  };
+}
+
+export function mapGalleryPhotoToDto(document: any): GalleryPhotoDto {
+  return {
+    id: document._id?.toString(),
+    eventId: document.eventId,
+    posterUserId: document.posterUserId,
+    photoUrl: document.photoUrl,
+    createdAt: document.createdAt,
   };
 }
 

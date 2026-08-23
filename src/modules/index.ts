@@ -10,3 +10,4 @@ export { UploadModule } from './upload/upload.module';
 export { NotificationModule } from './notification/notification.module';
 export { EventReminderModule } from './event/event-reminder.module';
 export { EventManagerModule } from './event-manager/event-manager.module';
+export { GalleryModule } from './gallery/gallery.module';

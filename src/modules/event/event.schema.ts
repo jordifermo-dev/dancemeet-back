@@ -14,6 +14,10 @@ export interface EventDocument extends Document {
   status: string;
   isFree: boolean;
   price: number;
+  /** Whether attendees (not just the creator/managers) may post gallery
+   * photos to this event - defaults on, individually toggleable per event
+   * (never propagated across a recurring series, unlike isFree). */
+  allowAttendeePhotos: boolean;
   creatorId: string;
   address: string;
   city: string;
@@ -57,6 +61,7 @@ export const EventSchema = new Schema<EventDocument>(
     status: { type: String, required: true },
     isFree: { type: Boolean, required: true, default: false },
     price: { type: Number, required: true, default: 0 },
+    allowAttendeePhotos: { type: Boolean, required: true, default: true },
     creatorId: { type: String, required: true },
     address: { type: String, required: true, trim: true },
     city: { type: String, required: true, trim: true },

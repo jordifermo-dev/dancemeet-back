@@ -4,8 +4,8 @@ import { i18nValidationMessage } from 'nestjs-i18n';
 const msg = (rule: string) => i18nValidationMessage(`errors.validation.${rule}`);
 
 export class UploadImageDto {
-  @IsIn(['profile', 'event'], { message: msg('isIn') })
-  type!: 'profile' | 'event';
+  @IsIn(['profile', 'event', 'gallery'], { message: msg('isIn') })
+  type!: 'profile' | 'event' | 'gallery';
 
   @IsString({ message: msg('isString') })
   @IsNotEmpty({ message: msg('isNotEmpty') })

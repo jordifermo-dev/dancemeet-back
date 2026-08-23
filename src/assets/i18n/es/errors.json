@@ -73,6 +73,8 @@
   "BUSINESS_ALREADY_MANAGER": "El usuario \"{userId}\" ya participa (o tiene una invitación pendiente) en este evento",
   "FORBIDDEN_MANAGE_EVENT": "No tienes permiso para gestionar este evento",
   "CANNOT_REMOVE_CREATOR": "No se puede eliminar al creador del evento",
+  "FORBIDDEN_POST_PHOTO": "No tienes permiso para compartir fotos en este evento",
+  "FORBIDDEN_POST_PROFILE_PHOTO": "Solo puedes gestionar las fotos de tu propio perfil",
   "validation": {
     "isNotEmpty": "$t(errors.fields.{property}) no puede estar vacío",
     "isString": "$t(errors.fields.{property}) debe ser texto",

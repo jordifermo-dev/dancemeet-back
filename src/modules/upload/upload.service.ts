@@ -1,12 +1,21 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { SupabaseStorageService } from './supabase-storage.service';
 
-export type UploadKind = 'profile' | 'event';
+export type UploadKind = 'profile' | 'event' | 'gallery';
 
 const KIND_FOLDERS: Record<UploadKind, string> = {
   profile: 'profile',
   event: 'events',
+  gallery: 'gallery',
 };
+
+// No explicit cap existed before this - only the whole-request 10MB JSON
+// body limit in main.ts, which is a blunt, silent 413 with no clear message
+// and applies to more than just images. Worth a real per-image check now
+// that the gallery makes "upload a photo" a repeatable per-attendee action
+// instead of a rare profile/event edit - one oversized photo shouldn't
+// silently eat into Supabase's free-tier storage/egress quota.
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 const MIME_EXTENSIONS: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -52,6 +61,10 @@ export class UploadService {
     const extension = MIME_EXTENSIONS[mimeType];
     if (!extension) {
       throw new BadRequestException(`Unsupported image type: ${mimeType}`);
+    }
+    const approxBytes = Math.ceil((base64.length * 3) / 4);
+    if (approxBytes > MAX_UPLOAD_BYTES) {
+      throw new BadRequestException(`Image exceeds the ${MAX_UPLOAD_BYTES} byte limit`);
     }
 
     const folder = KIND_FOLDERS[kind];

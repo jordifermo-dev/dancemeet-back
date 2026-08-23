@@ -75,12 +75,19 @@ export class UserRepository {
   }
 
   /** A user can have the app open in several tabs/devices at once, so tokens
-   * are additive ($addToSet dedupes) rather than a single overwritten value. */
+   * are additive ($addToSet dedupes) rather than a single overwritten value.
+   * A given device's token can only usefully belong to whoever is currently
+   * logged in on it, though - without stripping it from every other account
+   * first, logging into a different account (or a different person) on the
+   * same physical device left the token registered under every previous
+   * account too, so a push meant for one of them kept ringing on whoever's
+   * device last held that token. */
   async addFcmToken(userId: string, token: string): Promise<boolean> {
     return handleDbOperation(this.resourceName, 'addFcmToken', async () => {
       if (!isValidObjectId(userId)) {
         throw new InvalidIdException(this.resourceName, userId);
       }
+      await this.userModel.updateMany({ _id: { $ne: userId }, fcmTokens: token }, { $pull: { fcmTokens: token } });
       const updatedDocument = await this.userModel.findByIdAndUpdate(userId, {
         $addToSet: { fcmTokens: token },
       });

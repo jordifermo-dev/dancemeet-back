@@ -16,5 +16,11 @@
   "eventManagerInviteTitle": "Event organizer invite",
   "eventManagerInviteBody": "{{name}} invited you to be an organizer of \"{{eventTitle}}\"",
   "eventAttendeeInviteTitle": "Invite to attend",
-  "eventAttendeeInviteBody": "{{name}} invited you to attend \"{{eventTitle}}\""
+  "eventAttendeeInviteBody": "{{name}} invited you to attend \"{{eventTitle}}\"",
+  "galleryPhotoFollowedTitle": "New photo from {{name}}",
+  "galleryPhotoFollowedBody": "{{name}} shared a photo in \"{{eventTitle}}\"",
+  "galleryPhotoAttendingTitle": "New photo in {{eventTitle}}",
+  "galleryPhotoAttendingBody": "{{name}} shared a new photo in \"{{eventTitle}}\", which you're attending",
+  "galleryPhotoProfileTitle": "New photo from {{name}}",
+  "galleryPhotoProfileBody": "{{name}} shared a new photo on their profile"
 }

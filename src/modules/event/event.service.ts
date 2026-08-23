@@ -58,6 +58,39 @@ export class EventService {
     return event;
   }
 
+  /**
+   * Authorization for the gallery: the creator and any accepted manager can
+   * always post (same as assertCanManage), and an accepted attendee can too
+   * *if* the organizer has left allowAttendeePhotos on (defaults to true).
+   * Deliberately a flat check rather than composed with assertCanManage -
+   * assertCanManage itself would reject a plain attendee outright, so
+   * calling it first and catching would mean swallowing-and-retrying instead
+   * of just reading top to bottom.
+   */
+  async assertCanPostPhoto(eventId: string, requestingUserId: string): Promise<EventDto> {
+    const event = await this.eventRepository.findById(eventId);
+    if (!event) {
+      throw new ResourceNotFoundException('Event', eventId);
+    }
+    if (event.creatorId === requestingUserId) {
+      return event;
+    }
+    const isManager = await this.eventManagerService.isAcceptedManager(eventId, requestingUserId);
+    if (isManager) {
+      return event;
+    }
+    if (event.allowAttendeePhotos) {
+      const isAttendee = await this.favoriteService.isFavorited(requestingUserId, eventId);
+      if (isAttendee) {
+        return event;
+      }
+    }
+    throw new ForbiddenActionException(
+      `User "${requestingUserId}" is not allowed to post photos to event "${eventId}"`,
+      'errors.FORBIDDEN_POST_PHOTO',
+    );
+  }
+
   /** Series-level counterpart of assertCanManage - series routes only have a
    * seriesId, not a single eventId, so this checks against the series' first
    * instance (managers are always granted across every instance at once, see

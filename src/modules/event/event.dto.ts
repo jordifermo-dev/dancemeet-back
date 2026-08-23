@@ -37,6 +37,7 @@ export class EventDto {
   status!: string;
   isFree!: boolean;
   price!: number;
+  allowAttendeePhotos!: boolean;
   creatorId!: string;
   address!: string;
   city!: string;
@@ -197,6 +198,10 @@ export class UpdateEventDto {
   @IsNumber({}, { message: msg('isNumber') })
   @Min(0, { message: msg('min') })
   price?: number;
+
+  @IsOptional()
+  @IsBoolean({ message: msg('isBoolean') })
+  allowAttendeePhotos?: boolean;
 
   @IsOptional()
   @IsMongoId({ message: msg('isMongoId') })

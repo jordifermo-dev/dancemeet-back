@@ -38,6 +38,9 @@ const TEMPLATE_KEYS: Record<NotificationType, { title: string; body: string }> =
   recurring_series_created: { title: 'recurringSeriesCreatedTitle', body: 'recurringSeriesCreatedBody' },
   event_manager_invite: { title: 'eventManagerInviteTitle', body: 'eventManagerInviteBody' },
   event_attendee_invite: { title: 'eventAttendeeInviteTitle', body: 'eventAttendeeInviteBody' },
+  gallery_photo_followed: { title: 'galleryPhotoFollowedTitle', body: 'galleryPhotoFollowedBody' },
+  gallery_photo_attending: { title: 'galleryPhotoAttendingTitle', body: 'galleryPhotoAttendingBody' },
+  gallery_photo_profile: { title: 'galleryPhotoProfileTitle', body: 'galleryPhotoProfileBody' },
 };
 
 export function renderNotification(
