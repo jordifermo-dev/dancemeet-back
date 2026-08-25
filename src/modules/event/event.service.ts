@@ -10,6 +10,7 @@ import { NotificationService } from '../notification/notification.service';
 import { UserService } from '../user/user.service';
 import { FollowersService } from '../followers/followers.service';
 import { FavoriteService } from '../favorite/favorite.service';
+import { AttendanceService } from '../attendance/attendance.service';
 import { EventManagerService } from '../event-manager/event-manager.service';
 
 export class EventService {
@@ -27,6 +28,11 @@ export class EventService {
    */
   private get favoriteService(): FavoriteService {
     return this.moduleRef.get(FavoriteService, { strict: false });
+  }
+
+  /** Same reasoning as favoriteService above - circular with AttendanceModule. */
+  private get attendanceService(): AttendanceService {
+    return this.moduleRef.get(AttendanceService, { strict: false });
   }
 
   /** Same reasoning as favoriteService above - circular with EventManagerModule. */
@@ -80,7 +86,7 @@ export class EventService {
       return event;
     }
     if (event.allowAttendeePhotos) {
-      const isAttendee = await this.favoriteService.isFavorited(requestingUserId, eventId);
+      const isAttendee = await this.attendanceService.isAttending(requestingUserId, eventId);
       if (isAttendee) {
         return event;
       }
@@ -116,14 +122,21 @@ export class EventService {
     // client-supplied DTO - otherwise anyone could create an event that
     // impersonates someone else as its organizer.
     const created = await this.eventRepository.create({ ...eventData, creatorId: requestingUserId });
-    // Organizing an event means attending it - this is what actually
-    // makes the creator count as an attendee (heart filled, attendee
-    // list/count includes them), not just a display-only default.
-    await this.favoriteService.createFavorite({
-      userId: created.creatorId,
-      eventId: created.id!,
-      createdAt: Date.now(),
-    });
+    // Organizing an event means attending it (real RSVP - attendee list/
+    // count, gallery permission) *and* liking it (heart filled) - not just
+    // a display-only default.
+    await Promise.all([
+      this.favoriteService.createFavorite({
+        userId: created.creatorId,
+        eventId: created.id!,
+        createdAt: Date.now(),
+      }),
+      this.attendanceService.createAttendance({
+        userId: created.creatorId,
+        eventId: created.id!,
+        createdAt: Date.now(),
+      }),
+    ]);
     await this.notifyAboutNewEvent(created);
     return created;
   }
@@ -201,13 +214,16 @@ export class EventService {
       occurrences,
       seriesId,
     );
-    // Same reasoning as createEvent()'s single favorite.create() call -
-    // organizing means attending every instance too.
-    await Promise.all(
-      events.map((event) =>
+    // Same reasoning as createEvent()'s favorite+attendance calls -
+    // organizing means liking and attending every instance too.
+    await Promise.all([
+      ...events.map((event) =>
         this.favoriteService.createFavorite({ userId: event.creatorId, eventId: event.id!, createdAt: Date.now() }),
       ),
-    );
+      ...events.map((event) =>
+        this.attendanceService.createAttendance({ userId: event.creatorId, eventId: event.id!, createdAt: Date.now() }),
+      ),
+    ]);
     await this.notifyAboutRecurringSeries(events);
     return { seriesId, events };
   }
@@ -280,7 +296,7 @@ export class EventService {
       return;
     }
     const first = events[0];
-    const attendeeSets = await Promise.all(events.map((event) => this.favoriteService.findByEvent(event.id!)));
+    const attendeeSets = await Promise.all(events.map((event) => this.attendanceService.findByEvent(event.id!)));
     const attendeeIds = [...new Set(attendeeSets.flat().map((a) => a.userId))].filter((id) => id !== first.creatorId);
     if (attendeeIds.length) {
       await this.notificationService.notifyMany(attendeeIds, 'event_updated', {
@@ -355,15 +371,20 @@ export class EventService {
     } = existing;
     const seriesId = randomUUID();
     const events = await this.eventRepository.attachToExistingSeries(eventId, baseFields, seriesId, occurrences);
-    // The existing event is already favorited by its creator (from
+    // The existing event is already liked+attended by its creator (from
     // createEvent()) - only the newly-created instances need it.
-    await Promise.all(
-      events
+    await Promise.all([
+      ...events
         .slice(1)
         .map((event) =>
           this.favoriteService.createFavorite({ userId: event.creatorId, eventId: event.id!, createdAt: Date.now() }),
         ),
-    );
+      ...events
+        .slice(1)
+        .map((event) =>
+          this.attendanceService.createAttendance({ userId: event.creatorId, eventId: event.id!, createdAt: Date.now() }),
+        ),
+    ]);
     await this.notifyAboutRecurringSeries(events);
     return { seriesId, events };
   }
@@ -457,7 +478,7 @@ export class EventService {
     if (!event) {
       return;
     }
-    const attendees = await this.favoriteService.findByEvent(eventId);
+    const attendees = await this.attendanceService.findByEvent(eventId);
     const attendeeIds = attendees.map((a) => a.userId).filter((id) => id !== event.creatorId);
     if (attendeeIds.length) {
       await this.notificationService.notifyMany(attendeeIds, 'event_updated', {

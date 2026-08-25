@@ -3,7 +3,7 @@ import { GalleryCoverDto, GalleryPhotoDto, GalleryPhotoWithEventDto, GalleryPhot
 import { ForbiddenActionException, ResourceNotFoundException } from '../../common';
 import { UserService } from '../user/user.service';
 import { EventService } from '../event/event.service';
-import { FavoriteService } from '../favorite/favorite.service';
+import { AttendanceService } from '../attendance/attendance.service';
 import { NotificationService } from '../notification/notification.service';
 
 export class GalleryService {
@@ -11,7 +11,7 @@ export class GalleryService {
     private readonly repository: GalleryRepository,
     private readonly userService: UserService,
     private readonly eventService: EventService,
-    private readonly favoriteService: FavoriteService,
+    private readonly attendanceService: AttendanceService,
     private readonly notificationService: NotificationService,
   ) {}
 
@@ -34,7 +34,7 @@ export class GalleryService {
 
     const [followers, attendees] = await Promise.all([
       this.userService.getFollowersDetailed(posterUserId),
-      this.favoriteService.getEventAttendeesDetailed(eventId),
+      this.attendanceService.getEventAttendeesDetailed(eventId),
     ]);
     const followerIds = followers.map((follower) => follower.id).filter((id) => id !== posterUserId);
     const attendeeIds = attendees.map((attendee) => attendee.id).filter((id) => id !== posterUserId);

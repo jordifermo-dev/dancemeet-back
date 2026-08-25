@@ -11,22 +11,15 @@ export class FavoriteDto {
   createdAt!: number;
 }
 
-/** An event a user has favorited, hydrated with just enough creator info to
- * render the Favorites list (avatar/name) without a second round-trip per card. */
+/** An event a user has liked/hearted, hydrated with just enough creator info
+ * to render the Favorites list (avatar/name) without a second round-trip per
+ * card. A Favorite is a plain "me gusta" with no further implications - it
+ * does not mean the user is attending (see AttendanceDto/AttendedEventDto in
+ * src/modules/attendance/, the real RSVP that drives the attendee list,
+ * count, gallery permission and organizer notification). */
 export class FavoritedEventDto extends EventDto {
   creatorName!: string;
   relation!: 'creator' | 'favorite';
-}
-
-/** One row of an event's attendee list - same shape as FollowUserDto (one row
- * of a followers/following list), just "since" the user favorited/marked
- * themselves attending this event instead of since they followed someone. */
-export class EventAttendeeDto {
-  id!: string;
-  name!: string;
-  photoUrl?: string;
-  disciplineIds!: string[];
-  attendedAt!: number;
 }
 
 export class CreateFavoriteDto {

@@ -8,33 +8,26 @@ import { EventModule } from '../event/event.module';
 import { EventManagerModule } from '../event-manager/event-manager.module';
 import { UserService } from '../user/user.service';
 import { UserModule } from '../user/user.module';
-import { NotificationService } from '../notification/notification.service';
-import { NotificationModule } from '../notification/notification.module';
 import { FAVORITE_MODEL } from '../../config/mongoose.config';
 import { FavoriteDocument } from './favorite.schema';
 
 @Module({
   // Circular with EventModule - EventService auto-favorites the creator on
   // create, FavoriteService needs EventService for "events I organize or
-  // favorited" and attendee-list lookups. Also circular with
-  // EventManagerModule - see that module's own comment for why. forwardRef()
-  // here still resolves the *module* graph in both cases; FavoriteService
-  // itself resolves each lazily via ModuleRef (see FavoriteService).
-  imports: [forwardRef(() => EventModule), forwardRef(() => EventManagerModule), UserModule, NotificationModule],
+  // liked" lookups. Also circular with EventManagerModule - see that
+  // module's own comment for why. forwardRef() here still resolves the
+  // *module* graph in both cases; FavoriteService itself resolves each
+  // lazily via ModuleRef (see FavoriteService).
+  imports: [forwardRef(() => EventModule), forwardRef(() => EventManagerModule), UserModule],
   controllers: [FavoriteController],
   providers: [
     {
       provide: FavoriteService,
-      useFactory: (
-        favoriteModel: Model<FavoriteDocument>,
-        moduleRef: ModuleRef,
-        userService: UserService,
-        notificationService: NotificationService,
-      ) => {
+      useFactory: (favoriteModel: Model<FavoriteDocument>, moduleRef: ModuleRef, userService: UserService) => {
         const favoriteRepository = new FavoriteRepository(favoriteModel);
-        return new FavoriteService(favoriteRepository, moduleRef, userService, notificationService);
+        return new FavoriteService(favoriteRepository, moduleRef, userService);
       },
-      inject: [FAVORITE_MODEL, ModuleRef, UserService, NotificationService],
+      inject: [FAVORITE_MODEL, ModuleRef, UserService],
     },
   ],
   exports: [FavoriteService],

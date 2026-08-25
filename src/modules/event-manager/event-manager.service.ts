@@ -7,6 +7,7 @@ import { UserService } from '../user/user.service';
 import { NotificationService } from '../notification/notification.service';
 import { EventService } from '../event/event.service';
 import { FavoriteService } from '../favorite/favorite.service';
+import { AttendanceService } from '../attendance/attendance.service';
 
 export class EventManagerService {
   constructor(
@@ -28,6 +29,14 @@ export class EventManagerService {
    * getFavoritedEventsDetailed calls getAcceptedEventIdsForUser). */
   private get favoriteService(): FavoriteService {
     return this.moduleRef.get(FavoriteService, { strict: false });
+  }
+
+  /** Same reasoning as favoriteService above - circular with
+   * AttendanceModule (respondToInvite() below grants real attendance on
+   * accept, AttendanceService's own getAttendedEventsDetailed calls
+   * getAcceptedEventIdsForUser). */
+  private get attendanceService(): AttendanceService {
+    return this.moduleRef.get(AttendanceService, { strict: false });
   }
 
   /**
@@ -102,11 +111,13 @@ export class EventManagerService {
   /**
    * Accepts or declines a pending invite - declining deletes the row(s),
    * accepting flips them to 'accepted' and, same as EventService.createEvent
-   * does for the creator, auto-favorites every affected event for the new
-   * participant (heart filled, counted as attending, regardless of role -
-   * see FavoriteService.ensureFavoritedMany). A manager-role acceptance
+   * does for the creator, grants every affected event's real attendance
+   * (counted in the attendee list/count, gallery permission - see
+   * AttendanceService.ensureAttendingMany) *and* likes it (heart filled -
+   * see FavoriteService.ensureFavoritedMany), regardless of role - a
+   * confirmed participant is unambiguously both. A manager-role acceptance
    * additionally shows as "Organizas" instead of "Asistes" on
-   * Favorites/Mis-eventos (see FavoriteService.getFavoritedEventsDetailed).
+   * Favorites/Mis-eventos (see AttendanceService.getAttendedEventsDetailed).
    * Applies across the whole series when the event has one, mirroring
    * inviteParticipant()'s series-wide grant.
    */
@@ -123,7 +134,10 @@ export class EventManagerService {
 
     if (accept) {
       await this.eventManagerRepository.updateStatusManyByEventsAndUser(eventIds, userId, 'accepted');
-      await this.favoriteService.ensureFavoritedMany(userId, eventIds);
+      await Promise.all([
+        this.attendanceService.ensureAttendingMany(userId, eventIds),
+        this.favoriteService.ensureFavoritedMany(userId, eventIds),
+      ]);
     } else {
       await this.eventManagerRepository.deleteManyByEventsAndUser(eventIds, userId);
     }
@@ -131,13 +145,14 @@ export class EventManagerService {
 
   /**
    * Fully removes someone from the event's attendee list, from the
-   * organizer's side - whether they're a plain attendee (self-favorited, no
+   * organizer's side - whether they're a plain attendee (self-marked, no
    * EventManager row at all) or a pending/accepted manager. Strips both any
-   * EventManager row (role/invite) and the Favorite row(s) (so they stop
+   * EventManager row (role/invite) and the Attendance row(s) (so they stop
    * counting as attending), across every instance of a recurring series.
-   * This is deliberately unrelated to any Follow relationship between the
-   * organizer and this person - see FavoriteService.removeFavoritedMany,
-   * which only ever touches Favorite, never Follow. Only someone who can
+   * Deliberately leaves their Favorite/like rows alone - whether they still
+   * "like" this event is their own preference, not something an organizer
+   * removing them should be able to take away. Also unrelated to any Follow
+   * relationship between the organizer and this person. Only someone who can
    * already manage the event may do this, and the creator can't be removed
    * (their rights are implicit via event.creatorId, not a row here).
    */
@@ -152,8 +167,8 @@ export class EventManagerService {
     }
     const eventIds = await this.resolveSeriesEventIds(event.seriesId, eventId);
     const removedManagerCount = await this.eventManagerRepository.deleteManyByEventsAndUser(eventIds, targetUserId);
-    const removedFavoriteCount = await this.favoriteService.removeFavoritedMany(targetUserId, eventIds);
-    if (!removedManagerCount && !removedFavoriteCount) {
+    const removedAttendanceCount = await this.attendanceService.removeAttendingMany(targetUserId, eventIds);
+    if (!removedManagerCount && !removedAttendanceCount) {
       throw new ResourceNotFoundException('EventParticipant', `event "${eventId}" / user "${targetUserId}"`);
     }
   }

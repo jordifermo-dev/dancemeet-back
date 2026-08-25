@@ -17,6 +17,7 @@ import { NotificationDto } from '../modules/notification/notification.dto';
 import { UserDto } from '../modules/user/user.dto';
 import { EventManagerDto } from '../modules/event-manager/event-manager.dto';
 import { GalleryPhotoDto } from '../modules/gallery/gallery.dto';
+import { AttendanceDto } from '../modules/attendance/attendance.dto';
 
 export const DISCIPLINE_MODEL = 'DISCIPLINE_MODEL';
 export const EVENT_TYPE_MODEL = 'EVENT_TYPE_MODEL';
@@ -27,6 +28,7 @@ export const NOTIFICATION_MODEL = 'NOTIFICATION_MODEL';
 export const USER_MODEL = 'USER_MODEL';
 export const EVENT_MANAGER_MODEL = 'EVENT_MANAGER_MODEL';
 export const GALLERY_MODEL = 'GALLERY_MODEL';
+export const ATTENDANCE_MODEL = 'ATTENDANCE_MODEL';
 
 export async function connectMongoose(): Promise<typeof mongoose> {
   const uri = process.env.MONGODB_URI;
@@ -121,6 +123,15 @@ export function mapEventManagerToDto(document: any): EventManagerDto {
     status: document.status,
     createdAt: document.createdAt,
     respondedAt: document.respondedAt,
+  };
+}
+
+export function mapAttendanceToDto(document: any): AttendanceDto {
+  return {
+    id: document._id?.toString(),
+    userId: document.userId,
+    eventId: document.eventId,
+    createdAt: document.createdAt,
   };
 }
 

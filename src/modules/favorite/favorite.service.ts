@@ -1,22 +1,25 @@
 import { ModuleRef } from '@nestjs/core';
 import { FavoriteRepository } from './favorite.repository';
-import { CreateFavoriteDto, EventAttendeeDto, FavoriteDto, FavoritedEventDto } from './favorite.dto';
+import { CreateFavoriteDto, FavoriteDto, FavoritedEventDto } from './favorite.dto';
 import {
   ResourceNotFoundException,
   BusinessRuleException,
   DuplicateKeyException,
 } from '../../common';
-import { NotificationService } from '../notification/notification.service';
 import { UserService } from '../user/user.service';
 import { EventService } from '../event/event.service';
 import { EventManagerService } from '../event-manager/event-manager.service';
 
+/** A Favorite is a plain "me gusta" a user puts on an event - marks the
+ * heart filled and lists the event under Favoritos, nothing more. It does
+ * NOT mean the user is attending; see AttendanceService (src/modules/
+ * attendance/) for the real RSVP that drives the attendee list, count,
+ * gallery-posting permission and the organizer's "new attendee" notification. */
 export class FavoriteService {
   constructor(
     private readonly favoriteRepository: FavoriteRepository,
     private readonly moduleRef: ModuleRef,
     private readonly userService: UserService,
-    private readonly notificationService: NotificationService,
   ) {}
 
   /**
@@ -41,12 +44,12 @@ export class FavoriteService {
   }
 
   /**
-   * Get the events a user organizes (creatorId) and/or has favorited,
-   * hydrated with the creator's name so the Favorites list can render a full
-   * card without a request per event. Each event is tagged with how the user
-   * relates to it - creating it always wins over favoriting it (organizing
-   * your own event already means you're attending, so there's nothing extra
-   * to signal by also marking it favorited).
+   * Get the events a user organizes (creatorId) and/or has liked, hydrated
+   * with the creator's name so the Favorites list can render a full card
+   * without a request per event. Each event is tagged with how the user
+   * relates to it - creating it always wins over liking it (organizing your
+   * own event already means you're attending, so there's nothing extra to
+   * signal by also marking it liked).
    */
   async getFavoritedEventsDetailed(userId: string): Promise<FavoritedEventDto[]> {
     const favorites = await this.favoriteRepository.findByUser(userId);
@@ -56,9 +59,9 @@ export class FavoriteService {
     const createdEventIds = new Set(createdEvents.map((e) => e.id!));
     // An accepted manager has the same organizer-level relationship to the
     // event as its creator (see EventManagerService.respondToInvite, which
-    // already auto-favorites them on accept the same way createEvent() does
-    // for the creator) - treated identically here so "Organizas" shows for
-    // both, not just the literal creatorId match.
+    // already auto-likes them on accept the same way createEvent() does for
+    // the creator) - treated identically here so "Organizas" shows for both,
+    // not just the literal creatorId match.
     const managedEventIds = new Set(await this.eventManagerService.getAcceptedEventIdsForUser(userId));
 
     const allEventIds = [...new Set([...favoritedEventIds, ...createdEventIds])];
@@ -84,43 +87,15 @@ export class FavoriteService {
   }
 
   /**
-   * Get everyone attending an event (i.e. who has favorited it), hydrated
-   * with just enough profile info to render an attendee list - same
-   * hydration pattern as UserService.getFollowersDetailed/getFollowingDetailed.
-   */
-  async getEventAttendeesDetailed(eventId: string): Promise<EventAttendeeDto[]> {
-    const favorites = await this.favoriteRepository.findByEvent(eventId);
-    const users = await this.userService.findByIds(favorites.map((f) => f.userId));
-    const userById = new Map(users.map((user) => [user.id, user]));
-
-    return favorites
-      .map((favorite): EventAttendeeDto | null => {
-        const user = userById.get(favorite.userId);
-        if (!user) {
-          return null;
-        }
-        return {
-          id: user.id!,
-          name: user.name,
-          photoUrl: user.photoUrl,
-          disciplineIds: user.disciplineIds,
-          attendedAt: favorite.createdAt,
-        };
-      })
-      .filter((item): item is EventAttendeeDto => item !== null);
-  }
-
-  /**
-   * Raw passthrough - for other services (e.g. EventService's attendee
-   * notification fan-out) that need an event's favoriters without depending
-   * on FavoriteRepository directly.
+   * Raw passthrough - for other services that need an event's likers without
+   * depending on FavoriteRepository directly.
    */
   async findByEvent(eventId: string): Promise<FavoriteDto[]> {
     return await this.favoriteRepository.findByEvent(eventId);
   }
 
   /**
-   * Check if user has favorited an event
+   * Check if user has favorited (liked) an event
    */
   async isFavorited(userId: string, eventId: string): Promise<boolean> {
     const favorite = await this.favoriteRepository.findByUserAndEvent(userId, eventId);
@@ -128,7 +103,9 @@ export class FavoriteService {
   }
 
   /**
-   * Add event to favorites
+   * Add event to favorites - a plain like, no notification and no effect on
+   * attendance (see AttendanceService.addAttendance for the RSVP that does
+   * notify the organizer).
    */
   async addToFavorites(userId: string, eventId: string): Promise<FavoriteDto> {
     const existing = await this.favoriteRepository.findByUserAndEvent(userId, eventId);
@@ -140,22 +117,11 @@ export class FavoriteService {
       );
     }
     try {
-      const created = await this.createFavorite({
+      return await this.createFavorite({
         userId,
         eventId,
         createdAt: Date.now(),
       });
-      const event = await this.eventService.findById(eventId);
-      const attendee = await this.userService.findById(userId);
-      if (event && attendee && event.creatorId !== userId) {
-        await this.notificationService.notify(event.creatorId, 'event_attendee', {
-          eventId,
-          fromUserId: userId,
-          name: attendee.name,
-          eventTitle: event.title,
-        });
-      }
-      return created;
     } catch (err) {
       if (err instanceof DuplicateKeyException) {
         throw new BusinessRuleException(
@@ -188,9 +154,8 @@ export class FavoriteService {
   /**
    * Favorites every instance of a recurring series at once - the events the
    * user already favorited (e.g. the one they tapped the heart on) are left
-   * alone, only the missing instances get a new Favorite row. Notifies the
-   * organizer once for the whole series (mirrors EventService's own
-   * notifyAboutRecurringSeries), not once per instance.
+   * alone, only the missing instances get a new Favorite row. No
+   * notification - liking is a plain "me gusta" with no further implications.
    */
   async addSeriesToFavorites(userId: string, seriesId: string): Promise<void> {
     const events = await this.eventService.getEventsBySeriesId(seriesId);
@@ -211,19 +176,6 @@ export class FavoriteService {
         this.favoriteRepository.create({ userId, eventId: event.id!, createdAt: Date.now() }),
       ),
     );
-    const first = events[0];
-    if (first.creatorId === userId) {
-      return;
-    }
-    const attendee = await this.userService.findById(userId);
-    if (attendee) {
-      await this.notificationService.notify(first.creatorId, 'event_attendee', {
-        eventId: first.id!,
-        fromUserId: userId,
-        name: attendee.name,
-        eventTitle: first.title,
-      });
-    }
   }
 
   /**
@@ -249,12 +201,12 @@ export class FavoriteService {
 
   /**
    * Idempotent bulk-favorite - creates a Favorite row for any of the given
-   * events the user doesn't already have one for, skips the rest. Unlike
-   * addToFavorites/addSeriesToFavorites (a user-initiated "I'm attending"
-   * action that notifies the organizer), this has no notification - it's the
-   * automatic side effect of accepting a manager invite, mirroring
-   * EventService.createEvent's own auto-favorite for the creator. Used by
-   * EventManagerService.respondToInvite.
+   * events the user doesn't already have one for, skips the rest. The
+   * automatic side effect of becoming a confirmed attendee (accepting a
+   * manager invite, being the creator) - mirrors EventService.createEvent's
+   * own auto-favorite for the creator. Used by EventManagerService.
+   * respondToInvite and EventService.createEvent/createEventSeries/
+   * attachRecurrenceToEvent.
    */
   async ensureFavoritedMany(userId: string, eventIds: string[]): Promise<void> {
     if (!eventIds.length) {
@@ -269,20 +221,5 @@ export class FavoriteService {
     await Promise.all(
       toCreate.map((eventId) => this.favoriteRepository.create({ userId, eventId, createdAt: Date.now() })),
     );
-  }
-
-  /**
-   * Idempotent bulk-unfavorite (mirror of ensureFavoritedMany above) - used
-   * by EventManagerService.removeParticipant so an organizer forcing someone
-   * off the attendee list strips their attendance across every instance of a
-   * recurring series in one call, without erroring on instances they never
-   * favorited in the first place. Returns how many rows were actually
-   * removed, so the caller can tell "was attending" from "wasn't".
-   */
-  async removeFavoritedMany(userId: string, eventIds: string[]): Promise<number> {
-    if (!eventIds.length) {
-      return 0;
-    }
-    return await this.favoriteRepository.deleteManyByUserAndEvents(userId, eventIds);
   }
 }

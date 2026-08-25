@@ -8,7 +8,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { FavoriteService } from './favorite.service';
-import { EventAttendeeDto, FavoriteDto, FavoritedEventDto } from './favorite.dto';
+import { FavoriteDto, FavoritedEventDto } from './favorite.dto';
 
 @Controller('api/favorites')
 export class FavoriteController {
@@ -17,11 +17,6 @@ export class FavoriteController {
   @Get('user/:userId/events')
   async getFavoritedEventsDetailed(@Param('userId') userId: string): Promise<FavoritedEventDto[]> {
     return await this.favoriteService.getFavoritedEventsDetailed(userId);
-  }
-
-  @Get('event/:eventId/attendees')
-  async getEventAttendeesDetailed(@Param('eventId') eventId: string): Promise<EventAttendeeDto[]> {
-    return await this.favoriteService.getEventAttendeesDetailed(eventId);
   }
 
   @Get('check/:userId/:eventId')

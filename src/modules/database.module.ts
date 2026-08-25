@@ -10,6 +10,7 @@ import {
   USER_MODEL,
   EVENT_MANAGER_MODEL,
   GALLERY_MODEL,
+  ATTENDANCE_MODEL,
 } from '../config/mongoose.config';
 import { DisciplineModel } from './discipline/discipline.schema';
 import { EventTypeModel } from './event-type/event-type.schema';
@@ -20,6 +21,7 @@ import { NotificationModel } from './notification/notification.schema';
 import { UserModel } from './user/user.schema';
 import { EventManagerModel } from './event-manager/event-manager.schema';
 import { GalleryPhotoModel } from './gallery/gallery.schema';
+import { AttendanceModel } from './attendance/attendance.schema';
 import { HealthModule } from '../health/health.module';
 
 @Global()
@@ -68,6 +70,10 @@ import { HealthModule } from '../health/health.module';
       provide: GALLERY_MODEL,
       useFactory: () => GalleryPhotoModel,
     },
+    {
+      provide: ATTENDANCE_MODEL,
+      useFactory: () => AttendanceModel,
+    },
   ],
   exports: [
     'DATABASE',
@@ -80,6 +86,7 @@ import { HealthModule } from '../health/health.module';
     USER_MODEL,
     EVENT_MANAGER_MODEL,
     GALLERY_MODEL,
+    ATTENDANCE_MODEL,
   ],
   imports: [HealthModule],
 })

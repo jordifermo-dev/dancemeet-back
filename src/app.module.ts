@@ -20,6 +20,7 @@ import {
   EventReminderModule,
   EventManagerModule,
   GalleryModule,
+  AttendanceModule,
 } from './modules';
 import { HealthModule } from './health/health.module';
 
@@ -47,6 +48,7 @@ import { HealthModule } from './health/health.module';
     EventReminderModule,
     EventManagerModule,
     GalleryModule,
+    AttendanceModule,
     HealthModule,
   ],
   controllers: [AppController],

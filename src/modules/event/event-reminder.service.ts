@@ -1,17 +1,19 @@
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { EventRepository } from './event.repository';
-import { FavoriteRepository } from '../favorite/favorite.repository';
+import { AttendanceRepository } from '../attendance/attendance.repository';
 import { NotificationService } from '../notification/notification.service';
 
 /** Daily "this is happening today" reminder for every event starting that
- * day, sent to its attendees and its organizer alike - plus a more frequent
- * housekeeping job that flips `published` events over to `finished` once
- * their end time passes, so status (and anything filtering by it) reflects
- * reality without the organizer having to edit the event by hand. */
+ * day, sent to its real attendees and its organizer alike (not to anyone who
+ * has merely liked it - a plain heart has no further implications) - plus a
+ * more frequent housekeeping job that flips `published` events over to
+ * `finished` once their end time passes, so status (and anything filtering
+ * by it) reflects reality without the organizer having to edit the event by
+ * hand. */
 export class EventReminderService {
   constructor(
     private readonly eventRepository: EventRepository,
-    private readonly favoriteRepository: FavoriteRepository,
+    private readonly attendanceRepository: AttendanceRepository,
     private readonly notificationService: NotificationService,
   ) {}
 
@@ -45,7 +47,7 @@ export class EventReminderService {
     const dayEnd = dayStart + 24 * 60 * 60 * 1000 - 1;
     const events = await this.eventRepository.findHappeningToday(dayStart, dayEnd);
     for (const event of events) {
-      const attendees = await this.favoriteRepository.findByEvent(event.id!);
+      const attendees = await this.attendanceRepository.findByEvent(event.id!);
       const recipientIds = [...new Set([...attendees.map((a) => a.userId), event.creatorId])];
       await this.notificationService.notifyMany(recipientIds, 'event_reminder_today', {
         eventId: event.id!,
