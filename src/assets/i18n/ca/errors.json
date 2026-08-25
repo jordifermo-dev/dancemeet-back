@@ -76,6 +76,7 @@
   "FORBIDDEN_MANAGE_EVENT": "No tens permís per gestionar aquest esdeveniment",
   "CANNOT_REMOVE_CREATOR": "No es pot eliminar el creador de l'esdeveniment",
   "FORBIDDEN_POST_PHOTO": "No tens permís per compartir fotos en aquest esdeveniment",
+  "FORBIDDEN_PRIVATE_AREA": "Només els assistents i organitzadors d'aquest esdeveniment poden accedir aquí",
   "FORBIDDEN_POST_PROFILE_PHOTO": "Només pots gestionar les fotos del teu propi perfil",
   "validation": {
     "isNotEmpty": "$t(errors.fields.{property}) no pot estar buit",

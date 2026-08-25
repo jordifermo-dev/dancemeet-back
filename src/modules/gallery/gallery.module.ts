@@ -3,6 +3,7 @@ import { Model } from 'mongoose';
 import { GalleryController } from './gallery.controller';
 import { UserGalleryController } from './user-gallery.controller';
 import { GalleryCoversController } from './gallery-covers.controller';
+import { PrivateGalleryController } from './private-gallery.controller';
 import { GalleryService } from './gallery.service';
 import { GalleryRepository } from './gallery.repository';
 import { EventModule } from '../event/event.module';
@@ -22,7 +23,7 @@ import { GalleryPhotoDocument } from './gallery.schema';
   // GalleryModule, so no forwardRef() is needed here (unlike
   // EventManagerModule's pairs).
   imports: [EventModule, UserModule, AttendanceModule, NotificationModule],
-  controllers: [GalleryController, UserGalleryController, GalleryCoversController],
+  controllers: [GalleryController, UserGalleryController, GalleryCoversController, PrivateGalleryController],
   providers: [
     {
       provide: GalleryService,

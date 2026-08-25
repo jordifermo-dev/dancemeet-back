@@ -141,6 +141,8 @@ export function mapGalleryPhotoToDto(document: any): GalleryPhotoDto {
     eventId: document.eventId,
     posterUserId: document.posterUserId,
     photoUrl: document.photoUrl,
+    showInPublicGallery: document.showInPublicGallery ?? true,
+    showInPrivateGallery: document.showInPrivateGallery ?? false,
     createdAt: document.createdAt,
   };
 }

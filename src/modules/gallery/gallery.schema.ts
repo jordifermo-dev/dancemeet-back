@@ -7,11 +7,20 @@ import { Document, Model, Schema, model } from 'mongoose';
  * duplicating the row. eventId is absent for a photo posted directly to a
  * profile, with no event involved. No unique index on {eventId,userId}
  * (unlike EventManagerSchema) - a user can post many photos to the same
- * event. */
+ * event.
+ *
+ * showInPublicGallery/showInPrivateGallery are independent, not two ends of
+ * one boolean - a photo posted privately can later also be shared publicly
+ * (both true at once), and a public photo shared by mistake can be moved to
+ * private-only (see GalleryService.shareToPublicGallery/moveToPrivateGallery).
+ * Both only matter when eventId is set - a profile-only photo has no
+ * privacy concept and ignores them (see getUserGalleryDetailed). */
 export interface GalleryPhotoDocument extends Document {
   eventId?: string;
   posterUserId: string;
   photoUrl: string;
+  showInPublicGallery: boolean;
+  showInPrivateGallery: boolean;
   createdAt: number;
 }
 
@@ -20,6 +29,8 @@ export const GalleryPhotoSchema = new Schema<GalleryPhotoDocument>(
     eventId: { type: String, required: false },
     posterUserId: { type: String, required: true },
     photoUrl: { type: String, required: true },
+    showInPublicGallery: { type: Boolean, required: true, default: true },
+    showInPrivateGallery: { type: Boolean, required: true, default: false },
     createdAt: { type: Number, default: () => Date.now() },
   },
   {

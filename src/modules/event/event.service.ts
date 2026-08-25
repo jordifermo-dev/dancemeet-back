@@ -97,6 +97,35 @@ export class EventService {
     );
   }
 
+  /**
+   * Authorization for an event's private area (private gallery today, real-
+   * time chat later) - the creator, any accepted manager, or a real attendee
+   * always can; everyone else can't. Unlike assertCanPostPhoto, deliberately
+   * NOT gated by allowAttendeePhotos - that toggle only concerns posting to
+   * the *public* gallery, not being let into the group's own private space.
+   */
+  async assertCanAccessPrivateArea(eventId: string, requestingUserId: string): Promise<EventDto> {
+    const event = await this.eventRepository.findById(eventId);
+    if (!event) {
+      throw new ResourceNotFoundException('Event', eventId);
+    }
+    if (event.creatorId === requestingUserId) {
+      return event;
+    }
+    const isManager = await this.eventManagerService.isAcceptedManager(eventId, requestingUserId);
+    if (isManager) {
+      return event;
+    }
+    const isAttendee = await this.attendanceService.isAttending(requestingUserId, eventId);
+    if (isAttendee) {
+      return event;
+    }
+    throw new ForbiddenActionException(
+      `User "${requestingUserId}" is not allowed to access the private area of event "${eventId}"`,
+      'errors.FORBIDDEN_PRIVATE_AREA',
+    );
+  }
+
   /** Series-level counterpart of assertCanManage - series routes only have a
    * seriesId, not a single eventId, so this checks against the series' first
    * instance (managers are always granted across every instance at once, see

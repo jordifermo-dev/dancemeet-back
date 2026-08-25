@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseInterceptors } from '@nestjs/common';
 import { CurrentUser } from '../../common';
 import { CurrentUserInterceptor } from '../user/current-user.interceptor';
 import { UserDto } from '../user/user.dto';
@@ -31,6 +31,26 @@ export class GalleryController {
     @CurrentUser() user: UserDto,
   ): Promise<{ success: boolean }> {
     await this.galleryService.deletePhoto(eventId, photoId, user.id!);
+    return { success: true };
+  }
+
+  @Patch(':photoId/share-public')
+  async sharePhotoToPublicGallery(
+    @Param('eventId') eventId: string,
+    @Param('photoId') photoId: string,
+    @CurrentUser() user: UserDto,
+  ): Promise<{ success: boolean }> {
+    await this.galleryService.shareToPublicGallery(eventId, photoId, user.id!);
+    return { success: true };
+  }
+
+  @Patch(':photoId/move-private')
+  async movePhotoToPrivateGallery(
+    @Param('eventId') eventId: string,
+    @Param('photoId') photoId: string,
+    @CurrentUser() user: UserDto,
+  ): Promise<{ success: boolean }> {
+    await this.galleryService.moveToPrivateGallery(eventId, photoId, user.id!);
     return { success: true };
   }
 }

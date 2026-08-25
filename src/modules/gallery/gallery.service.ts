@@ -27,7 +27,13 @@ export class GalleryService {
    */
   async postPhoto(eventId: string, posterUserId: string, photoUrl: string): Promise<GalleryPhotoDto> {
     const event = await this.eventService.assertCanPostPhoto(eventId, posterUserId);
-    const photo = await this.repository.create({ eventId, posterUserId, photoUrl });
+    const photo = await this.repository.create({
+      eventId,
+      posterUserId,
+      photoUrl,
+      showInPublicGallery: true,
+      showInPrivateGallery: false,
+    });
 
     const poster = await this.userService.findById(posterUserId);
     const posterName = poster?.name ?? '';
@@ -49,6 +55,34 @@ export class GalleryService {
         eventTitle: event.title,
       }),
     ]);
+
+    return photo;
+  }
+
+  /**
+   * Posts to the event's private, attendees-only gallery - gated by
+   * assertCanAccessPrivateArea (not assertCanPostPhoto, which depends on
+   * allowAttendeePhotos - a toggle specific to the public gallery). Notifies
+   * only the event's real attendees (the only audience who can ever see this
+   * photo), unlike postPhoto which also notifies followers.
+   */
+  async postPrivatePhoto(eventId: string, posterUserId: string, photoUrl: string): Promise<GalleryPhotoDto> {
+    const event = await this.eventService.assertCanAccessPrivateArea(eventId, posterUserId);
+    const photo = await this.repository.create({
+      eventId,
+      posterUserId,
+      photoUrl,
+      showInPublicGallery: false,
+      showInPrivateGallery: true,
+    });
+
+    const poster = await this.userService.findById(posterUserId);
+    const attendees = await this.attendanceService.getEventAttendeesDetailed(eventId);
+    const attendeeIds = attendees.map((attendee) => attendee.id).filter((id) => id !== posterUserId);
+    await this.notificationService.notifyMany(attendeeIds, 'gallery_photo_attending', {
+      name: poster?.name ?? '',
+      eventTitle: event.title,
+    });
 
     return photo;
   }
@@ -80,10 +114,24 @@ export class GalleryService {
     return photo;
   }
 
-  /** Hydrated for the event's own gallery - who posted each photo, so a tap
-   * can jump to that person's profile. */
+  /** Hydrated for the event's own PUBLIC gallery - who posted each photo, so
+   * a tap can jump to that person's profile. Anyone can see this, so only
+   * photos flagged showInPublicGallery come back (see getPrivateEventGalleryDetailed
+   * for the attendees-only counterpart). */
   async getEventGalleryDetailed(eventId: string): Promise<GalleryPhotoWithPosterDto[]> {
-    const photos = await this.repository.findByEvent(eventId);
+    const photos = await this.repository.findPublicByEvent(eventId);
+    return this.hydratePosters(photos);
+  }
+
+  /** Hydrated for the event's PRIVATE, attendees-only gallery - same shape
+   * as getEventGalleryDetailed, gated by assertCanAccessPrivateArea first. */
+  async getPrivateEventGalleryDetailed(eventId: string, requestingUserId: string): Promise<GalleryPhotoWithPosterDto[]> {
+    await this.eventService.assertCanAccessPrivateArea(eventId, requestingUserId);
+    const photos = await this.repository.findPrivateByEvent(eventId);
+    return this.hydratePosters(photos);
+  }
+
+  private async hydratePosters(photos: GalleryPhotoDto[]): Promise<GalleryPhotoWithPosterDto[]> {
     if (!photos.length) {
       return [];
     }
@@ -136,12 +184,41 @@ export class GalleryService {
     );
   }
 
-  /** The poster can remove their own photo; otherwise this falls back to
-   * EventService.assertCanManage so an organizer can moderate their event's
-   * gallery. This lives here (not on EventService) because "do I own this
-   * specific photo" is gallery-domain logic, not an event-authorization
-   * question. */
-  async deletePhoto(eventId: string, photoId: string, requestingUserId: string): Promise<void> {
+  /**
+   * Makes a private (or private+public) photo also show in the event's
+   * public gallery - e.g. sharing something from the group's private
+   * gallery more broadly. Only the poster or a manager can do this (same
+   * ownership check as deletePhoto). Leaves showInPrivateGallery untouched -
+   * this is additive, not a move (see moveToPrivateGallery for the reverse).
+   */
+  async shareToPublicGallery(eventId: string, photoId: string, requestingUserId: string): Promise<void> {
+    const photo = await this.assertOwnsOrCanManage(eventId, photoId, requestingUserId);
+    if (photo.showInPublicGallery) {
+      return;
+    }
+    await this.repository.updateVisibility(photoId, { showInPublicGallery: true });
+  }
+
+  /**
+   * Moves a public photo (shared by mistake) to the private gallery only -
+   * unlike shareToPublicGallery, this is a move: showInPublicGallery is
+   * cleared, so the photo also disappears from the poster's own public
+   * profile gallery (see GalleryRepository.findByUser). Requires
+   * assertCanAccessPrivateArea too - whoever moves something into the
+   * private area must actually be allowed in it.
+   */
+  async moveToPrivateGallery(eventId: string, photoId: string, requestingUserId: string): Promise<void> {
+    const photo = await this.assertOwnsOrCanManage(eventId, photoId, requestingUserId);
+    await this.eventService.assertCanAccessPrivateArea(eventId, requestingUserId);
+    if (photo.showInPrivateGallery && !photo.showInPublicGallery) {
+      return;
+    }
+    await this.repository.updateVisibility(photoId, { showInPrivateGallery: true, showInPublicGallery: false });
+  }
+
+  /** Shared ownership check behind shareToPublicGallery/moveToPrivateGallery
+   * - same rule as deletePhoto (poster themselves, or a manager). */
+  private async assertOwnsOrCanManage(eventId: string, photoId: string, requestingUserId: string): Promise<GalleryPhotoDto> {
     const photo = await this.repository.findById(photoId);
     if (!photo || photo.eventId !== eventId) {
       throw new ResourceNotFoundException('GalleryPhoto', photoId);
@@ -149,6 +226,16 @@ export class GalleryService {
     if (photo.posterUserId !== requestingUserId) {
       await this.eventService.assertCanManage(eventId, requestingUserId);
     }
+    return photo;
+  }
+
+  /** The poster can remove their own photo; otherwise this falls back to
+   * EventService.assertCanManage so an organizer can moderate their event's
+   * gallery. This lives here (not on EventService) because "do I own this
+   * specific photo" is gallery-domain logic, not an event-authorization
+   * question. */
+  async deletePhoto(eventId: string, photoId: string, requestingUserId: string): Promise<void> {
+    await this.assertOwnsOrCanManage(eventId, photoId, requestingUserId);
     await this.repository.deleteById(photoId);
   }
 

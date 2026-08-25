@@ -9,23 +9,50 @@ export class GalleryRepository {
 
   constructor(private readonly galleryModel: Model<GalleryPhotoDocument>) {}
 
-  async create(data: { eventId?: string; posterUserId: string; photoUrl: string }): Promise<GalleryPhotoDto> {
+  /** showInPublicGallery/showInPrivateGallery are optional - meaningless for
+   * a profile-only photo (no eventId), which the schema's own defaults
+   * cover; every event photo (public or private) always passes them
+   * explicitly (see GalleryService.postPhoto/postPrivatePhoto). */
+  async create(data: {
+    eventId?: string;
+    posterUserId: string;
+    photoUrl: string;
+    showInPublicGallery?: boolean;
+    showInPrivateGallery?: boolean;
+  }): Promise<GalleryPhotoDto> {
     return handleDbOperation(this.resourceName, 'create', async () => {
       const createdDocument = await this.galleryModel.create({ ...data, createdAt: Date.now() });
       return mapGalleryPhotoToDto(createdDocument);
     });
   }
 
-  async findByEvent(eventId: string): Promise<GalleryPhotoDto[]> {
-    return handleDbOperation(this.resourceName, 'findByEvent', async () => {
-      const documents = await this.galleryModel.find({ eventId }).sort({ createdAt: -1 }).lean();
+  /** The event's public gallery - anyone can see this, so only photos
+   * explicitly flagged public are included (see GalleryPhotoDocument). */
+  async findPublicByEvent(eventId: string): Promise<GalleryPhotoDto[]> {
+    return handleDbOperation(this.resourceName, 'findPublicByEvent', async () => {
+      const documents = await this.galleryModel.find({ eventId, showInPublicGallery: true }).sort({ createdAt: -1 }).lean();
       return documents.map((document) => mapGalleryPhotoToDto(document));
     });
   }
 
+  /** The event's private, attendees-only gallery - authorization happens in
+   * GalleryService before this is ever called. */
+  async findPrivateByEvent(eventId: string): Promise<GalleryPhotoDto[]> {
+    return handleDbOperation(this.resourceName, 'findPrivateByEvent', async () => {
+      const documents = await this.galleryModel.find({ eventId, showInPrivateGallery: true }).sort({ createdAt: -1 }).lean();
+      return documents.map((document) => mapGalleryPhotoToDto(document));
+    });
+  }
+
+  /** A user's own gallery (their profile) is publicly visible to anyone, so
+   * a private-only event photo must never show up here - a profile-only
+   * photo (no eventId at all) has no privacy concept and always shows. */
   async findByUser(posterUserId: string): Promise<GalleryPhotoDto[]> {
     return handleDbOperation(this.resourceName, 'findByUser', async () => {
-      const documents = await this.galleryModel.find({ posterUserId }).sort({ createdAt: -1 }).lean();
+      const documents = await this.galleryModel
+        .find({ posterUserId, $or: [{ eventId: { $exists: false } }, { showInPublicGallery: true }] })
+        .sort({ createdAt: -1 })
+        .lean();
       return documents.map((document) => mapGalleryPhotoToDto(document));
     });
   }
@@ -34,6 +61,17 @@ export class GalleryRepository {
     return handleDbOperation(this.resourceName, 'findById', async () => {
       const document = await this.galleryModel.findById(id).lean();
       return document ? mapGalleryPhotoToDto(document) : null;
+    });
+  }
+
+  /** Backs shareToPublicGallery/moveToPrivateGallery - a targeted patch of
+   * just the visibility flags, never the photo's other fields. */
+  async updateVisibility(
+    id: string,
+    visibility: { showInPublicGallery?: boolean; showInPrivateGallery?: boolean },
+  ): Promise<void> {
+    await handleDbOperation(this.resourceName, 'updateVisibility', async () => {
+      await this.galleryModel.updateOne({ _id: id }, { $set: visibility });
     });
   }
 
@@ -50,14 +88,16 @@ export class GalleryRepository {
    * small enough that fetching every matching row sorted newest-first and
    * reducing to one-per-event (plus a running count) in memory is simpler
    * and stays consistent with the rest of this codebase, which doesn't use
-   * `.aggregate()` anywhere else. */
+   * `.aggregate()` anywhere else. Public-only (this mode is part of public
+   * discovery - Explorer/Events/Favorites - so a private-only photo must
+   * never surface as an event's cover thumbnail). */
   async findLatestCoverByEventIds(eventIds: string[]): Promise<Map<string, { photo: GalleryPhotoDto; count: number }>> {
     return handleDbOperation(this.resourceName, 'findLatestCoverByEventIds', async () => {
       if (!eventIds.length) {
         return new Map();
       }
       const documents = await this.galleryModel
-        .find({ eventId: { $in: eventIds } })
+        .find({ eventId: { $in: eventIds }, showInPublicGallery: true })
         .sort({ createdAt: -1 })
         .lean();
       const coverByEventId = new Map<string, { photo: GalleryPhotoDto; count: number }>();

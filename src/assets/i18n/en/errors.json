@@ -76,6 +76,7 @@
   "FORBIDDEN_MANAGE_EVENT": "You don't have permission to manage this event",
   "CANNOT_REMOVE_CREATOR": "The event's creator can't be removed",
   "FORBIDDEN_POST_PHOTO": "You don't have permission to post photos to this event",
+  "FORBIDDEN_PRIVATE_AREA": "Only this event's attendees and organizers can access this area",
   "FORBIDDEN_POST_PROFILE_PHOTO": "You can only manage photos on your own profile",
   "validation": {
     "isNotEmpty": "$t(errors.fields.{property}) should not be empty",

@@ -9,6 +9,10 @@ export class GalleryPhotoDto {
   eventId?: string;
   posterUserId!: string;
   photoUrl!: string;
+  /** Only meaningful when eventId is set - see GalleryPhotoDocument's own
+   * doc comment for why these are independent, not one boolean. */
+  showInPublicGallery!: boolean;
+  showInPrivateGallery!: boolean;
   createdAt!: number;
 }
 
