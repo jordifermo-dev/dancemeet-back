@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { IsMongoId, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 import { MessageReaction } from './event-chat.schema';
 
@@ -15,6 +15,11 @@ export class EventMessageDto {
   text!: string;
   reactions!: MessageReaction[];
   createdAt!: number;
+  editedAt?: number;
+  deletedAt?: number;
+  replyToMessageId?: string;
+  attachedPhotoId?: string;
+  attachedPhotoUrl?: string;
 }
 
 /** One emoji's reaction summary on a message, from one specific viewer's
@@ -40,9 +45,45 @@ export class EventMessageWithSenderDto {
   text!: string;
   reactions!: GroupedReactionDto[];
   createdAt!: number;
+  editedAt?: number;
+  /** Derived from the stored deletedAt - readers only ever see this
+   * boolean, never the timestamp (see EventChatService.hydrate). */
+  deleted!: boolean;
+  replyTo?: EventMessageQuoteDto | null;
+  attachedPhoto?: EventMessageAttachedPhotoDto | null;
+}
+
+/** A small denormalized quote of another message, resolved at hydrate time -
+ * not stored this way, and not the full EventMessageWithSenderDto shape
+ * (a reply preview never needs reactions/attachments of the quoted message). */
+export class EventMessageQuoteDto {
+  id!: string;
+  senderName!: string;
+  text!: string;
+  deleted!: boolean;
+}
+
+export class EventMessageAttachedPhotoDto {
+  galleryPhotoId!: string;
+  photoUrl!: string;
 }
 
 export class CreateEventMessageDto {
+  @IsString({ message: msg('isString') })
+  @IsNotEmpty({ message: msg('isNotEmpty') })
+  @MaxLength(1000, { message: msg('maxLength') })
+  text!: string;
+
+  @IsOptional()
+  @IsMongoId({ message: msg('isMongoId') })
+  replyToMessageId?: string;
+
+  @IsOptional()
+  @IsMongoId({ message: msg('isMongoId') })
+  attachedPhotoId?: string;
+}
+
+export class EditEventMessageDto {
   @IsString({ message: msg('isString') })
   @IsNotEmpty({ message: msg('isNotEmpty') })
   @MaxLength(1000, { message: msg('maxLength') })

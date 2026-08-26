@@ -129,6 +129,12 @@ export class AttendanceService {
     return await this.attendanceRepository.findByUserAndEvent(userId, eventId);
   }
 
+  /** Called when a user opens (or re-enters) an event's xat - resets the
+   * unread-chat-count badge from here on (see EventChatService.getUnreadCount). */
+  async markChatRead(userId: string, eventId: string): Promise<void> {
+    await this.attendanceRepository.updateLastReadChatAt(userId, eventId, Date.now());
+  }
+
   /**
    * Check if user is genuinely attending an event - this is the gate
    * EventService.assertCanPostPhoto uses, not a plain Favorite/like.

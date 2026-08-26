@@ -1,10 +1,11 @@
 import { EventChatRepository } from './event-chat.repository';
 import { EventMessageDto, EventMessageWithSenderDto, GroupedReactionDto } from './event-chat.dto';
-import { ResourceNotFoundException } from '../../common';
+import { ForbiddenActionException, ResourceNotFoundException } from '../../common';
 import { UserService } from '../user/user.service';
 import { EventService } from '../event/event.service';
 import { AttendanceService } from '../attendance/attendance.service';
 import { NotificationService } from '../notification/notification.service';
+import { GalleryService } from '../gallery/gallery.service';
 
 const MESSAGE_PREVIEW_LENGTH = 80;
 
@@ -15,6 +16,7 @@ export class EventChatService {
     private readonly eventService: EventService,
     private readonly attendanceService: AttendanceService,
     private readonly notificationService: NotificationService,
+    private readonly galleryService: GalleryService,
   ) {}
 
   /**
@@ -40,9 +42,34 @@ export class EventChatService {
   /** Only ever called from EventChatGateway's send-message handler - there's
    * no REST write route for the xat (see EventChatController's own doc
    * comment), a message can only be sent while genuinely connected. */
-  async sendMessage(eventId: string, senderId: string, text: string): Promise<EventMessageWithSenderDto> {
+  async sendMessage(
+    eventId: string,
+    senderId: string,
+    text: string,
+    replyToMessageId?: string,
+    attachedPhotoId?: string,
+  ): Promise<EventMessageWithSenderDto> {
     const event = await this.eventService.assertCanAccessPrivateArea(eventId, senderId);
-    const created = await this.repository.create({ eventId, senderId, text });
+
+    // A mention only ever references a photo that already exists in this
+    // event's own gallery (public or private) - never an upload. Reusing
+    // getPhotoDetailed also re-confirms the sender can actually see it
+    // (redundant with the assertCanAccessPrivateArea above for a private-
+    // only photo, but cheap and keeps this one gate as the single source of
+    // truth for "can this user see this photo" rather than duplicating it).
+    let attachedPhotoUrl: string | undefined;
+    if (attachedPhotoId) {
+      const photo = await this.galleryService.getPhotoDetailed(eventId, attachedPhotoId, senderId);
+      attachedPhotoUrl = photo.photoUrl;
+    }
+
+    const created = await this.repository.create({
+      eventId,
+      senderId,
+      text,
+      ...(replyToMessageId ? { replyToMessageId } : {}),
+      ...(attachedPhotoId ? { attachedPhotoId, attachedPhotoUrl } : {}),
+    });
 
     const sender = await this.userService.findById(senderId);
     const attendees = await this.attendanceService.getEventAttendeesDetailed(eventId);
@@ -57,6 +84,66 @@ export class EventChatService {
 
     const [hydrated] = await this.hydrate([created], senderId);
     return hydrated;
+  }
+
+  /** Only the message's own author can edit it (see EventDetail plan's own
+   * "Fase 3" decision - no organizer moderation in this phase). */
+  async editMessage(eventId: string, messageId: string, userId: string, text: string): Promise<EventMessageWithSenderDto> {
+    await this.eventService.assertCanAccessPrivateArea(eventId, userId);
+    const message = await this.repository.findById(messageId);
+    if (!message || message.eventId !== eventId) {
+      throw new ResourceNotFoundException('EventMessage', messageId);
+    }
+    if (message.senderId !== userId) {
+      throw new ForbiddenActionException(
+        `User "${userId}" is not allowed to edit message "${messageId}"`,
+        'errors.FORBIDDEN_EDIT_MESSAGE',
+      );
+    }
+    if (message.deletedAt) {
+      throw new ForbiddenActionException(
+        `Message "${messageId}" has been deleted and can no longer be edited`,
+        'errors.FORBIDDEN_EDIT_MESSAGE',
+      );
+    }
+    const updated = await this.repository.update(messageId, { text, editedAt: Date.now() });
+    const [hydrated] = await this.hydrate([updated!], userId);
+    return hydrated;
+  }
+
+  /** Soft delete - text is blanked and `deleted:true` surfaced to every
+   * reader from here on (see hydrate), the row itself is kept so any reply
+   * quoting it still has something to show. */
+  async deleteMessage(eventId: string, messageId: string, userId: string): Promise<EventMessageWithSenderDto> {
+    await this.eventService.assertCanAccessPrivateArea(eventId, userId);
+    const message = await this.repository.findById(messageId);
+    if (!message || message.eventId !== eventId) {
+      throw new ResourceNotFoundException('EventMessage', messageId);
+    }
+    if (message.senderId !== userId) {
+      throw new ForbiddenActionException(
+        `User "${userId}" is not allowed to delete message "${messageId}"`,
+        'errors.FORBIDDEN_DELETE_MESSAGE',
+      );
+    }
+    const updated = await this.repository.update(messageId, { deletedAt: Date.now() });
+    const [hydrated] = await this.hydrate([updated!], userId);
+    return hydrated;
+  }
+
+  async markChatRead(eventId: string, userId: string): Promise<void> {
+    await this.eventService.assertCanAccessPrivateArea(eventId, userId);
+    await this.attendanceService.markChatRead(userId, eventId);
+  }
+
+  async getUnreadCount(eventId: string, userId: string): Promise<number> {
+    await this.eventService.assertCanAccessPrivateArea(eventId, userId);
+    const [visibleFrom, attendance] = await Promise.all([
+      this.resolveVisibleFrom(eventId, userId),
+      this.attendanceService.findByUserAndEvent(userId, eventId),
+    ]);
+    const since = Math.max(visibleFrom, attendance?.lastReadChatAt ?? 0);
+    return this.repository.countUnread(eventId, since, userId);
   }
 
   async reactToMessage(eventId: string, messageId: string, userId: string, emoji: string): Promise<GroupedReactionDto[]> {
@@ -81,23 +168,54 @@ export class EventChatService {
     if (!messages.length) {
       return [];
     }
-    const senders = await this.userService.findByIds([...new Set(messages.map((message) => message.senderId))]);
+    const replyToIds = [...new Set(messages.map((message) => message.replyToMessageId).filter((id): id is string => !!id))];
+    const [senders, replyTargets] = await Promise.all([
+      this.userService.findByIds([...new Set(messages.map((message) => message.senderId))]),
+      replyToIds.length ? this.repository.findByIds(replyToIds) : Promise.resolve<EventMessageDto[]>([]),
+    ]);
     const senderById = new Map(senders.map((sender) => [sender.id, sender]));
+    // Reply targets need their own senders resolved too (a quote shows the
+    // original author's name) - a second, smaller sender lookup rather than
+    // widening the first one, since most messages have no reply at all.
+    const replyTargetSenders = replyTargets.length
+      ? await this.userService.findByIds([...new Set(replyTargets.map((m) => m.senderId))])
+      : [];
+    const replyTargetSenderById = new Map(replyTargetSenders.map((sender) => [sender.id, sender]));
+    const replyById = new Map(replyTargets.map((target) => [target.id!, target]));
+
     return messages
       .map((message): EventMessageWithSenderDto | null => {
         const sender = senderById.get(message.senderId);
         if (!sender) {
           return null;
         }
+        const deleted = !!message.deletedAt;
+        const replyTarget = message.replyToMessageId ? replyById.get(message.replyToMessageId) : undefined;
+        const replyTo = replyTarget
+          ? {
+              id: replyTarget.id!,
+              senderName: replyTargetSenderById.get(replyTarget.senderId)?.name ?? '',
+              text: replyTarget.deletedAt ? '' : replyTarget.text,
+              deleted: !!replyTarget.deletedAt,
+            }
+          : null;
+        const attachedPhoto =
+          !deleted && message.attachedPhotoId && message.attachedPhotoUrl
+            ? { galleryPhotoId: message.attachedPhotoId, photoUrl: message.attachedPhotoUrl }
+            : null;
         return {
           id: message.id!,
           eventId: message.eventId,
           senderId: message.senderId,
           senderName: sender.name,
           senderPhotoUrl: sender.photoUrl,
-          text: message.text,
-          reactions: this.groupReactions(message.reactions, requestingUserId),
+          text: deleted ? '' : message.text,
+          reactions: deleted ? [] : this.groupReactions(message.reactions, requestingUserId),
           createdAt: message.createdAt,
+          editedAt: message.editedAt,
+          deleted,
+          replyTo,
+          attachedPhoto,
         };
       })
       .filter((item): item is EventMessageWithSenderDto => item !== null);

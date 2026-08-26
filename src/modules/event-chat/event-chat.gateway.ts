@@ -109,21 +109,82 @@ export class EventChatGateway implements OnGatewayInit, OnGatewayDisconnect {
   @SubscribeMessage('send-message')
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() body: { eventId: string; text: string },
+    @MessageBody() body: { eventId: string; text: string; replyToMessageId?: string; attachedPhotoId?: string },
   ): Promise<void> {
     const user = (client.data as AuthedSocketData).user;
-    const text = body?.text?.trim();
-    if (!user?.id || !body?.eventId || !text) {
+    const text = body?.text?.trim() ?? '';
+    // A photo mention can be sent with no caption at all - only reject when
+    // there's neither text nor an attached photo to say something with.
+    if (!user?.id || !body?.eventId || (!text && !body?.attachedPhotoId)) {
       return;
     }
     try {
-      const message = await this.eventChatService.sendMessage(body.eventId, user.id, text);
+      const message = await this.eventChatService.sendMessage(
+        body.eventId,
+        user.id,
+        text,
+        body.replyToMessageId,
+        body.attachedPhotoId,
+      );
       // Broadcast to the whole room, sender included - the client never
       // renders optimistically, it always waits for this echo (see
       // event-chat-socket.service.ts's own doc comment).
       this.server.to(this.roomFor(body.eventId)).emit('new-message', message);
     } catch {
       client.emit('send-message-error', { eventId: body.eventId });
+    }
+  }
+
+  @SubscribeMessage('edit-message')
+  async handleEditMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: { eventId: string; messageId: string; text: string },
+  ): Promise<void> {
+    const user = (client.data as AuthedSocketData).user;
+    const text = body?.text?.trim();
+    if (!user?.id || !body?.eventId || !body?.messageId || !text) {
+      return;
+    }
+    try {
+      const message = await this.eventChatService.editMessage(body.eventId, body.messageId, user.id, text);
+      this.server.to(this.roomFor(body.eventId)).emit('message-updated', message);
+    } catch {
+      client.emit('edit-message-error', { eventId: body.eventId, messageId: body.messageId });
+    }
+  }
+
+  /** A "deleted" message is just a message whose `deleted` flag flipped -
+   * broadcast on the same `message-updated` event as an edit, rather than a
+   * separate event name/frontend code path. */
+  @SubscribeMessage('delete-message')
+  async handleDeleteMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: { eventId: string; messageId: string },
+  ): Promise<void> {
+    const user = (client.data as AuthedSocketData).user;
+    if (!user?.id || !body?.eventId || !body?.messageId) {
+      return;
+    }
+    try {
+      const message = await this.eventChatService.deleteMessage(body.eventId, body.messageId, user.id);
+      this.server.to(this.roomFor(body.eventId)).emit('message-updated', message);
+    } catch {
+      client.emit('delete-message-error', { eventId: body.eventId, messageId: body.messageId });
+    }
+  }
+
+  /** Purely the caller's own read-state - no broadcast to the room. */
+  @SubscribeMessage('mark-chat-read')
+  async handleMarkChatRead(@ConnectedSocket() client: Socket, @MessageBody() body: { eventId: string }): Promise<void> {
+    const user = (client.data as AuthedSocketData).user;
+    if (!user?.id || !body?.eventId) {
+      return;
+    }
+    try {
+      await this.eventChatService.markChatRead(body.eventId, user.id);
+    } catch {
+      // Read-state is best-effort - no error event, a missed mark-read just
+      // means the unread badge doesn't clear until the next successful one.
     }
   }
 

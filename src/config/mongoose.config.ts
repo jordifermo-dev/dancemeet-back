@@ -135,6 +135,7 @@ export function mapAttendanceToDto(document: any): AttendanceDto {
     userId: document.userId,
     eventId: document.eventId,
     chatVisibleFrom: document.chatVisibleFrom,
+    lastReadChatAt: document.lastReadChatAt,
     createdAt: document.createdAt,
   };
 }
@@ -147,6 +148,11 @@ export function mapEventMessageToDto(document: any): EventMessageDto {
     text: document.text,
     reactions: (document.reactions ?? []).map((reaction: any) => ({ emoji: reaction.emoji, userId: reaction.userId })),
     createdAt: document.createdAt,
+    editedAt: document.editedAt,
+    deletedAt: document.deletedAt,
+    replyToMessageId: document.replyToMessageId,
+    attachedPhotoId: document.attachedPhotoId,
+    attachedPhotoUrl: document.attachedPhotoUrl,
   };
 }
 
@@ -159,6 +165,7 @@ export function mapGalleryPhotoToDto(document: any): GalleryPhotoDto {
     showInPublicGallery: document.showInPublicGallery ?? true,
     showInPrivateGallery: document.showInPrivateGallery ?? false,
     createdAt: document.createdAt,
+    reactions: (document.reactions ?? []).map((reaction: any) => ({ emoji: reaction.emoji, userId: reaction.userId })),
   };
 }
 

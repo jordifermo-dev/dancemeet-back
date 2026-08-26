@@ -71,4 +71,35 @@ export class EventChatRepository {
       return document ? mapEventMessageToDto(document) : null;
     });
   }
+
+  async update(
+    messageId: string,
+    patch: Partial<{ text: string; editedAt: number; deletedAt: number }>,
+  ): Promise<EventMessageDto | null> {
+    return handleDbOperation(this.resourceName, 'update', async () => {
+      const document = await this.eventMessageModel.findByIdAndUpdate(messageId, { $set: patch }, { new: true });
+      return document ? mapEventMessageToDto(document) : null;
+    });
+  }
+
+  /** Batch lookup for resolving reply-quote previews - mirrors the same
+   * "fetch many by id in one query" shape UserService.findByIds already uses
+   * for hydrating senders. */
+  async findByIds(ids: string[]): Promise<EventMessageDto[]> {
+    return handleDbOperation(this.resourceName, 'findByIds', async () => {
+      const documents = await this.eventMessageModel.find({ _id: { $in: ids } }).lean();
+      return documents.map((document) => mapEventMessageToDto(document));
+    });
+  }
+
+  async countUnread(eventId: string, since: number, excludeUserId: string): Promise<number> {
+    return handleDbOperation(this.resourceName, 'countUnread', async () => {
+      return this.eventMessageModel.countDocuments({
+        eventId,
+        createdAt: { $gt: since },
+        senderId: { $ne: excludeUserId },
+        deletedAt: { $exists: false },
+      });
+    });
+  }
 }

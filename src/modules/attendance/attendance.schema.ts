@@ -19,6 +19,11 @@ export interface AttendanceDocument extends Document {
   userId: string;
   eventId: string;
   chatVisibleFrom?: number;
+  /** When this user last opened/read the event's xat - absent means never.
+   * Same "absent = safe default" reasoning as chatVisibleFrom: the unread
+   * count just falls back to chatVisibleFrom alone (see
+   * EventChatService.getUnreadCount). */
+  lastReadChatAt?: number;
   createdAt: number;
 }
 
@@ -27,6 +32,7 @@ export const AttendanceSchema = new Schema<AttendanceDocument>(
     userId: { type: String, required: true },
     eventId: { type: String, required: true },
     chatVisibleFrom: { type: Number, required: false },
+    lastReadChatAt: { type: Number, required: false },
     createdAt: { type: Number, default: () => Date.now() },
   },
   {

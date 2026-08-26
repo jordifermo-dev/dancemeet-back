@@ -11,6 +11,8 @@ export class AttendanceDto {
   /** See AttendanceDocument's own doc comment - absent means "use createdAt
    * as the chat history cutoff", 0 means full history. */
   chatVisibleFrom?: number;
+  /** See AttendanceDocument's own doc comment - absent means never read. */
+  lastReadChatAt?: number;
   createdAt!: number;
 }
 

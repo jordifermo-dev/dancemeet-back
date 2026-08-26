@@ -81,6 +81,32 @@ export class GalleryRepository {
     });
   }
 
+  /** One reaction per user per photo - same $pull-then-$push replace
+   * semantics as EventChatRepository.addReaction, copied rather than
+   * shared across domains. */
+  async addReaction(photoId: string, emoji: string, userId: string): Promise<GalleryPhotoDto | null> {
+    return handleDbOperation(this.resourceName, 'addReaction', async () => {
+      await this.galleryModel.updateOne({ _id: photoId }, { $pull: { reactions: { userId } } });
+      const document = await this.galleryModel.findByIdAndUpdate(
+        photoId,
+        { $push: { reactions: { emoji, userId } } },
+        { new: true },
+      );
+      return document ? mapGalleryPhotoToDto(document) : null;
+    });
+  }
+
+  async removeReaction(photoId: string, emoji: string, userId: string): Promise<GalleryPhotoDto | null> {
+    return handleDbOperation(this.resourceName, 'removeReaction', async () => {
+      const document = await this.galleryModel.findByIdAndUpdate(
+        photoId,
+        { $pull: { reactions: { emoji, userId } } },
+        { new: true },
+      );
+      return document ? mapGalleryPhotoToDto(document) : null;
+    });
+  }
+
   /** Latest photo per event (plus how many it has in total), for the "browse
    * events by photo" cover-image mode (see GalleryService.getCoverPhotosForEvents)
    * - the count lets that mode show a "multiple photos" hint per event

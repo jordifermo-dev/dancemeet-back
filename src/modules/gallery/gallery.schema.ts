@@ -22,6 +22,11 @@ export interface GalleryPhotoDocument extends Document {
   showInPublicGallery: boolean;
   showInPrivateGallery: boolean;
   createdAt: number;
+  /** One reaction per {emoji,userId} - same flat, ungrouped shape as
+   * MessageReaction on EventMessageDocument (see event-chat.schema.ts),
+   * copied rather than shared across domains. Grouping/reactedByMe is
+   * hydration logic in GalleryService, never stored this way. */
+  reactions: { emoji: string; userId: string }[];
 }
 
 export const GalleryPhotoSchema = new Schema<GalleryPhotoDocument>(
@@ -32,6 +37,10 @@ export const GalleryPhotoSchema = new Schema<GalleryPhotoDocument>(
     showInPublicGallery: { type: Boolean, required: true, default: true },
     showInPrivateGallery: { type: Boolean, required: true, default: false },
     createdAt: { type: Number, default: () => Date.now() },
+    reactions: {
+      type: [{ emoji: { type: String, required: true }, userId: { type: String, required: true }, _id: false }],
+      default: [],
+    },
   },
   {
     collection: 'gallery_photos',

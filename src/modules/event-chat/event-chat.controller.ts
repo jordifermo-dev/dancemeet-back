@@ -23,4 +23,10 @@ export class EventChatController {
   ): Promise<EventMessageWithSenderDto[]> {
     return await this.eventChatService.getMessagesDetailed(eventId, user.id!, before ? Number(before) : undefined);
   }
+
+  @Get('unread-count')
+  async getUnreadCount(@Param('eventId') eventId: string, @CurrentUser() user: UserDto): Promise<{ count: number }> {
+    const count = await this.eventChatService.getUnreadCount(eventId, user.id!);
+    return { count };
+  }
 }

@@ -68,4 +68,10 @@ export class AttendanceRepository {
       return this.attendanceModel.countDocuments(filter);
     });
   }
+
+  async updateLastReadChatAt(userId: string, eventId: string, timestamp: number): Promise<void> {
+    await handleDbOperation(this.resourceName, 'updateLastReadChatAt', async () => {
+      await this.attendanceModel.findOneAndUpdate({ userId, eventId }, { $set: { lastReadChatAt: timestamp } });
+    });
+  }
 }

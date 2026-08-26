@@ -20,6 +20,20 @@ export interface EventMessageDocument extends Document {
   text: string;
   reactions: MessageReaction[];
   createdAt: number;
+  /** Set on edit - text itself is overwritten in place (no history kept). */
+  editedAt?: number;
+  /** Soft-delete marker - text is blanked and `deleted:true` is surfaced to
+   * every reader as soon as this is set (see EventChatService.hydrate),
+   * rather than removing the row outright, so a reply quoting this message
+   * still has something to show. */
+  deletedAt?: number;
+  replyToMessageId?: string;
+  /** A "mention" of an existing gallery photo, not an upload - galleryPhotoId
+   * is looked up live only when the reader taps the thumbnail (to find its
+   * current gallery); attachedPhotoUrl is a send-time snapshot so the
+   * thumbnail itself still renders even if the photo is later moved/deleted. */
+  attachedPhotoId?: string;
+  attachedPhotoUrl?: string;
 }
 
 export const EventMessageSchema = new Schema<EventMessageDocument>(
@@ -32,6 +46,11 @@ export const EventMessageSchema = new Schema<EventMessageDocument>(
       default: [],
     },
     createdAt: { type: Number, default: () => Date.now() },
+    editedAt: { type: Number, required: false },
+    deletedAt: { type: Number, required: false },
+    replyToMessageId: { type: String, required: false },
+    attachedPhotoId: { type: String, required: false },
+    attachedPhotoUrl: { type: String, required: false },
   },
   {
     collection: 'event_chat_messages',

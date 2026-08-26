@@ -1,5 +1,11 @@
 import { GalleryRepository } from './gallery.repository';
-import { GalleryCoverDto, GalleryPhotoDto, GalleryPhotoWithEventDto, GalleryPhotoWithPosterDto } from './gallery.dto';
+import {
+  GalleryCoverDto,
+  GalleryPhotoDto,
+  GalleryPhotoWithEventDto,
+  GalleryPhotoWithPosterDto,
+  GroupedReactionDto,
+} from './gallery.dto';
 import { ForbiddenActionException, ResourceNotFoundException } from '../../common';
 import { UserService } from '../user/user.service';
 import { EventService } from '../event/event.service';
@@ -49,10 +55,13 @@ export class GalleryService {
       this.notificationService.notifyMany(followerIds, 'gallery_photo_followed', {
         name: posterName,
         eventTitle: event.title,
+        eventId,
       }),
       this.notificationService.notifyMany(attendeeIds, 'gallery_photo_attending', {
         name: posterName,
         eventTitle: event.title,
+        eventId,
+        gallery: 'public',
       }),
     ]);
 
@@ -82,6 +91,8 @@ export class GalleryService {
     await this.notificationService.notifyMany(attendeeIds, 'gallery_photo_attending', {
       name: poster?.name ?? '',
       eventTitle: event.title,
+      eventId,
+      gallery: 'private',
     });
 
     return photo;
@@ -109,18 +120,22 @@ export class GalleryService {
     const followerIds = followers.map((follower) => follower.id).filter((id) => id !== userId);
     await this.notificationService.notifyMany(followerIds, 'gallery_photo_profile', {
       name: poster?.name ?? '',
+      fromUserId: userId,
     });
 
     return photo;
   }
 
   /** Hydrated for the event's own PUBLIC gallery - who posted each photo, so
-   * a tap can jump to that person's profile. Anyone can see this, so only
-   * photos flagged showInPublicGallery come back (see getPrivateEventGalleryDetailed
-   * for the attendees-only counterpart). */
-  async getEventGalleryDetailed(eventId: string): Promise<GalleryPhotoWithPosterDto[]> {
+   * a tap can jump to that person's profile, plus this viewer's reaction
+   * summary per photo. Anyone can see this, so only photos flagged
+   * showInPublicGallery come back (see getPrivateEventGalleryDetailed for
+   * the attendees-only counterpart). requestingUserId is only needed to
+   * resolve reactedByMe - it does not gate this method at all (matches the
+   * public gallery's existing wide-open read access). */
+  async getEventGalleryDetailed(eventId: string, requestingUserId: string): Promise<GalleryPhotoWithPosterDto[]> {
     const photos = await this.repository.findPublicByEvent(eventId);
-    return this.hydratePosters(photos);
+    return this.hydratePosters(photos, requestingUserId);
   }
 
   /** Hydrated for the event's PRIVATE, attendees-only gallery - same shape
@@ -128,10 +143,70 @@ export class GalleryService {
   async getPrivateEventGalleryDetailed(eventId: string, requestingUserId: string): Promise<GalleryPhotoWithPosterDto[]> {
     await this.eventService.assertCanAccessPrivateArea(eventId, requestingUserId);
     const photos = await this.repository.findPrivateByEvent(eventId);
-    return this.hydratePosters(photos);
+    return this.hydratePosters(photos, requestingUserId);
   }
 
-  private async hydratePosters(photos: GalleryPhotoDto[]): Promise<GalleryPhotoWithPosterDto[]> {
+  /** Looks up one photo by id for cross-navigation from a xat mention (see
+   * EventMessageWithSenderDto.attachedPhoto) - a private-only photo still
+   * requires assertCanAccessPrivateArea, a publicly-visible one (in any
+   * degree) doesn't, same rule reactToPhoto below uses. */
+  async getPhotoDetailed(eventId: string, photoId: string, requestingUserId: string): Promise<GalleryPhotoWithPosterDto> {
+    const photo = await this.repository.findById(photoId);
+    if (!photo || photo.eventId !== eventId) {
+      throw new ResourceNotFoundException('GalleryPhoto', photoId);
+    }
+    if (!photo.showInPublicGallery) {
+      await this.eventService.assertCanAccessPrivateArea(eventId, requestingUserId);
+    }
+    const [hydrated] = await this.hydratePosters([photo], requestingUserId);
+    if (!hydrated) {
+      throw new ResourceNotFoundException('GalleryPhoto', photoId);
+    }
+    return hydrated;
+  }
+
+  async reactToPhoto(eventId: string, photoId: string, userId: string, emoji: string): Promise<GroupedReactionDto[]> {
+    const photo = await this.assertCanReact(eventId, photoId, userId);
+    const updated = await this.repository.addReaction(photo.id!, emoji, userId);
+    return this.groupReactions(updated!.reactions, userId);
+  }
+
+  async removeReactionFromPhoto(eventId: string, photoId: string, userId: string, emoji: string): Promise<GroupedReactionDto[]> {
+    const photo = await this.assertCanReact(eventId, photoId, userId);
+    const updated = await this.repository.removeReaction(photo.id!, emoji, userId);
+    return this.groupReactions(updated!.reactions, userId);
+  }
+
+  /** A private-only photo requires assertCanAccessPrivateArea; a photo
+   * visible publicly (in any degree, even if also private) is open to any
+   * requesting user, matching the public gallery's own existing read
+   * access - reacting isn't more sensitive than reading. */
+  private async assertCanReact(eventId: string, photoId: string, requestingUserId: string): Promise<GalleryPhotoDto> {
+    const photo = await this.repository.findById(photoId);
+    if (!photo || photo.eventId !== eventId) {
+      throw new ResourceNotFoundException('GalleryPhoto', photoId);
+    }
+    if (!photo.showInPublicGallery) {
+      await this.eventService.assertCanAccessPrivateArea(eventId, requestingUserId);
+    }
+    return photo;
+  }
+
+  private groupReactions(reactions: { emoji: string; userId: string }[], requestingUserId: string): GroupedReactionDto[] {
+    const byEmoji = new Map<string, string[]>();
+    for (const reaction of reactions) {
+      const userIds = byEmoji.get(reaction.emoji) ?? [];
+      userIds.push(reaction.userId);
+      byEmoji.set(reaction.emoji, userIds);
+    }
+    return [...byEmoji.entries()].map(([emoji, userIds]) => ({
+      emoji,
+      count: userIds.length,
+      reactedByMe: userIds.includes(requestingUserId),
+    }));
+  }
+
+  private async hydratePosters(photos: GalleryPhotoDto[], requestingUserId: string): Promise<GalleryPhotoWithPosterDto[]> {
     if (!photos.length) {
       return [];
     }
@@ -143,7 +218,18 @@ export class GalleryService {
         if (!poster) {
           return null;
         }
-        return { ...photo, posterUserName: poster.name, posterUserPhotoUrl: poster.photoUrl };
+        return {
+          id: photo.id!,
+          eventId: photo.eventId,
+          posterUserId: photo.posterUserId,
+          photoUrl: photo.photoUrl,
+          showInPublicGallery: photo.showInPublicGallery,
+          showInPrivateGallery: photo.showInPrivateGallery,
+          createdAt: photo.createdAt,
+          posterUserName: poster.name,
+          posterUserPhotoUrl: poster.photoUrl,
+          reactions: this.groupReactions(photo.reactions, requestingUserId),
+        };
       })
       .filter((item): item is GalleryPhotoWithPosterDto => item !== null);
   }

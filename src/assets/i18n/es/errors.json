@@ -78,6 +78,8 @@
   "FORBIDDEN_POST_PHOTO": "No tienes permiso para compartir fotos en este evento",
   "FORBIDDEN_PRIVATE_AREA": "Solo los asistentes y organizadores de este evento pueden acceder aquí",
   "FORBIDDEN_POST_PROFILE_PHOTO": "Solo puedes gestionar las fotos de tu propio perfil",
+  "FORBIDDEN_EDIT_MESSAGE": "Solo puedes editar tus propios mensajes",
+  "FORBIDDEN_DELETE_MESSAGE": "Solo puedes eliminar tus propios mensajes",
   "validation": {
     "isNotEmpty": "$t(errors.fields.{property}) no puede estar vacío",
     "isString": "$t(errors.fields.{property}) debe ser texto",
