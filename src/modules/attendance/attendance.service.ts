@@ -33,7 +33,9 @@ export class AttendanceService {
     return this.moduleRef.get(EventManagerService, { strict: false });
   }
 
-  async createAttendance(attendanceData: { userId: string; eventId: string; createdAt?: number }): Promise<AttendanceDto> {
+  async createAttendance(
+    attendanceData: { userId: string; eventId: string; chatVisibleFrom?: number; createdAt?: number },
+  ): Promise<AttendanceDto> {
     return await this.attendanceRepository.create(attendanceData);
   }
 
@@ -116,6 +118,15 @@ export class AttendanceService {
    */
   async findByEvent(eventId: string): Promise<AttendanceDto[]> {
     return await this.attendanceRepository.findByEvent(eventId);
+  }
+
+  /**
+   * Raw passthrough - for EventChatService to resolve a reader's own
+   * chatVisibleFrom cutoff without depending on AttendanceRepository
+   * directly.
+   */
+  async findByUserAndEvent(userId: string, eventId: string): Promise<AttendanceDto | null> {
+    return await this.attendanceRepository.findByUserAndEvent(userId, eventId);
   }
 
   /**
@@ -253,7 +264,15 @@ export class AttendanceService {
    * createEvent's own auto-attendance for the creator. Used by
    * EventManagerService.respondToInvite.
    */
-  async ensureAttendingMany(userId: string, eventIds: string[]): Promise<void> {
+  /**
+   * chatVisibleFrom (see AttendanceDocument's own doc comment) - passed
+   * through untouched to every newly-created row: 0 for a 'full' history
+   * invite, undefined (falls back to createdAt) for a 'fromJoin' one. Only
+   * ever applies to the rows this call actually creates - an existing row
+   * (already attending some other way) keeps whatever cutoff it already had,
+   * see this module's own plan doc for why that's an accepted simplification.
+   */
+  async ensureAttendingMany(userId: string, eventIds: string[], chatVisibleFrom?: number): Promise<void> {
     if (!eventIds.length) {
       return;
     }
@@ -264,7 +283,9 @@ export class AttendanceService {
       return;
     }
     await Promise.all(
-      toCreate.map((eventId) => this.attendanceRepository.create({ userId, eventId, createdAt: Date.now() })),
+      toCreate.map((eventId) =>
+        this.attendanceRepository.create({ userId, eventId, chatVisibleFrom, createdAt: Date.now() }),
+      ),
     );
   }
 

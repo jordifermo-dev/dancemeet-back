@@ -18,6 +18,7 @@ import { UserDto } from '../modules/user/user.dto';
 import { EventManagerDto } from '../modules/event-manager/event-manager.dto';
 import { GalleryPhotoDto } from '../modules/gallery/gallery.dto';
 import { AttendanceDto } from '../modules/attendance/attendance.dto';
+import { EventMessageDto } from '../modules/event-chat/event-chat.dto';
 
 export const DISCIPLINE_MODEL = 'DISCIPLINE_MODEL';
 export const EVENT_TYPE_MODEL = 'EVENT_TYPE_MODEL';
@@ -29,6 +30,7 @@ export const USER_MODEL = 'USER_MODEL';
 export const EVENT_MANAGER_MODEL = 'EVENT_MANAGER_MODEL';
 export const GALLERY_MODEL = 'GALLERY_MODEL';
 export const ATTENDANCE_MODEL = 'ATTENDANCE_MODEL';
+export const EVENT_CHAT_MODEL = 'EVENT_CHAT_MODEL';
 
 export async function connectMongoose(): Promise<typeof mongoose> {
   const uri = process.env.MONGODB_URI;
@@ -121,6 +123,7 @@ export function mapEventManagerToDto(document: any): EventManagerDto {
     invitedByUserId: document.invitedByUserId,
     role: document.role,
     status: document.status,
+    chatHistoryAccess: document.chatHistoryAccess ?? 'fromJoin',
     createdAt: document.createdAt,
     respondedAt: document.respondedAt,
   };
@@ -131,6 +134,18 @@ export function mapAttendanceToDto(document: any): AttendanceDto {
     id: document._id?.toString(),
     userId: document.userId,
     eventId: document.eventId,
+    chatVisibleFrom: document.chatVisibleFrom,
+    createdAt: document.createdAt,
+  };
+}
+
+export function mapEventMessageToDto(document: any): EventMessageDto {
+  return {
+    id: document._id?.toString(),
+    eventId: document.eventId,
+    senderId: document.senderId,
+    text: document.text,
+    reactions: (document.reactions ?? []).map((reaction: any) => ({ emoji: reaction.emoji, userId: reaction.userId })),
     createdAt: document.createdAt,
   };
 }

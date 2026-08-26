@@ -7,6 +7,7 @@ import { AppModule } from './app.module';
 // import { connectMongoose, seedReferenceData } from './config/mongoose.config';
 import { connectMongoose } from './config/mongoose.config';
 import { initFirebaseAdmin } from './config/firebase-admin.config';
+import { resolveAllowedOrigins } from './config/cors.config';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
@@ -39,23 +40,10 @@ async function bootstrap() {
   // requests from an arbitrary origin. Covers both local dev servers (`ng
   // serve` and `ionic serve` use different default ports) and the native
   // Capacitor webview; set CORS_ORIGINS (comma-separated) to override this
-  // list once there's a real deployed frontend domain.
-  const defaultDevOrigins = [
-    'http://localhost:8100',
-    'http://localhost:4200',
-    'capacitor://localhost',
-    'http://localhost',
-    // Capacitor's actual default Android origin (capacitor.config.ts doesn't
-    // override androidScheme, which defaults to "https") - without this,
-    // every request from the native Android app (including the profile
-    // lookup right after Firebase login) was silently rejected by CORS.
-    'https://localhost',
-  ];
-  const allowedOrigins = process.env.CORS_ORIGINS
-    ? process.env.CORS_ORIGINS.split(',').map((origin) => origin.trim())
-    : defaultDevOrigins;
+  // list once there's a real deployed frontend domain. Shared with
+  // event-chat.gateway.ts's own cors option (see cors.config.ts).
   app.enableCors({
-    origin: allowedOrigins,
+    origin: resolveAllowedOrigins(),
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept-Language'],
   });

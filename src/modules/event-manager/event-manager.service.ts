@@ -1,7 +1,7 @@
 import { ModuleRef } from '@nestjs/core';
 import { EventManagerRepository } from './event-manager.repository';
 import { EventManagerDetailedDto } from './event-manager.dto';
-import { EventManagerRole } from './event-manager.schema';
+import { ChatHistoryAccess, EventManagerRole } from './event-manager.schema';
 import { BusinessRuleException, ResourceNotFoundException } from '../../common';
 import { UserService } from '../user/user.service';
 import { NotificationService } from '../notification/notification.service';
@@ -61,6 +61,7 @@ export class EventManagerService {
     invitedUserId: string,
     invitedByUserId: string,
     role: EventManagerRole,
+    chatHistoryAccess: ChatHistoryAccess,
   ): Promise<void> {
     const event = await this.eventService.assertCanManage(eventId, invitedByUserId);
 
@@ -89,11 +90,17 @@ export class EventManagerService {
     }
 
     if (isUpgradeToManager) {
-      await this.eventManagerRepository.upsertAsPending(eventIds, invitedUserId, invitedByUserId, role);
+      await this.eventManagerRepository.upsertAsPending(eventIds, invitedUserId, invitedByUserId, role, chatHistoryAccess);
     } else if (eventIds.length > 1) {
-      await this.eventManagerRepository.createMany(eventIds, invitedUserId, invitedByUserId, role);
+      await this.eventManagerRepository.createMany(eventIds, invitedUserId, invitedByUserId, role, chatHistoryAccess);
     } else {
-      await this.eventManagerRepository.create({ eventId, userId: invitedUserId, invitedByUserId, role });
+      await this.eventManagerRepository.create({
+        eventId,
+        userId: invitedUserId,
+        invitedByUserId,
+        role,
+        chatHistoryAccess,
+      });
     }
 
     const inviter = await this.userService.findById(invitedByUserId);
@@ -134,8 +141,11 @@ export class EventManagerService {
 
     if (accept) {
       await this.eventManagerRepository.updateStatusManyByEventsAndUser(eventIds, userId, 'accepted');
+      // Same choice on every instance of a series - one invite covers all
+      // of them, see inviteParticipant's own series handling.
+      const chatVisibleFrom = pending[0].chatHistoryAccess === 'full' ? 0 : undefined;
       await Promise.all([
-        this.attendanceService.ensureAttendingMany(userId, eventIds),
+        this.attendanceService.ensureAttendingMany(userId, eventIds, chatVisibleFrom),
         this.favoriteService.ensureFavoritedMany(userId, eventIds),
       ]);
     } else {

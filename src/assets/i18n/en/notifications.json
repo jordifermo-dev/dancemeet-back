@@ -22,5 +22,7 @@
   "galleryPhotoAttendingTitle": "New photo in {{eventTitle}}",
   "galleryPhotoAttendingBody": "{{name}} shared a new photo in \"{{eventTitle}}\", which you're attending",
   "galleryPhotoProfileTitle": "New photo from {{name}}",
-  "galleryPhotoProfileBody": "{{name}} shared a new photo on their profile"
+  "galleryPhotoProfileBody": "{{name}} shared a new photo on their profile",
+  "eventChatMessageTitle": "New message in {{eventTitle}}",
+  "eventChatMessageBody": "{{name}}: {{message}}"
 }

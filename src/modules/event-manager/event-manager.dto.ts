@@ -1,10 +1,11 @@
 import { IsBoolean, IsIn, IsMongoId } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
-import type { EventManagerRole, EventManagerStatus } from './event-manager.schema';
+import type { ChatHistoryAccess, EventManagerRole, EventManagerStatus } from './event-manager.schema';
 
 const msg = (rule: string) => i18nValidationMessage(`errors.validation.${rule}`);
 
 export const EVENT_MANAGER_ROLES: EventManagerRole[] = ['attendee', 'manager'];
+export const CHAT_HISTORY_ACCESS_OPTIONS: ChatHistoryAccess[] = ['full', 'fromJoin'];
 
 export class EventManagerDto {
   id?: string;
@@ -13,6 +14,7 @@ export class EventManagerDto {
   invitedByUserId!: string;
   role!: EventManagerRole;
   status!: EventManagerStatus;
+  chatHistoryAccess!: ChatHistoryAccess;
   createdAt!: number;
   respondedAt?: number;
 }
@@ -43,6 +45,9 @@ export class InviteManagerDto {
 
   @IsIn(EVENT_MANAGER_ROLES, { message: msg('isIn') })
   role!: EventManagerRole;
+
+  @IsIn(CHAT_HISTORY_ACCESS_OPTIONS, { message: msg('isIn') })
+  chatHistoryAccess!: ChatHistoryAccess;
 }
 
 export class RespondToInviteDto {

@@ -21,7 +21,7 @@ export class EventManagerController {
     @Body() dto: InviteManagerDto,
     @CurrentUser() user: UserDto,
   ): Promise<{ success: boolean }> {
-    await this.eventManagerService.inviteParticipant(eventId, dto.userId, user.id!, dto.role);
+    await this.eventManagerService.inviteParticipant(eventId, dto.userId, user.id!, dto.role, dto.chatHistoryAccess);
     return { success: true };
   }
 

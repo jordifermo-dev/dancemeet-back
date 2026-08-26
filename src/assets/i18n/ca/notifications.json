@@ -22,5 +22,7 @@
   "galleryPhotoAttendingTitle": "Nova foto a {{eventTitle}}",
   "galleryPhotoAttendingBody": "{{name}} ha compartit una foto nova a \"{{eventTitle}}\", al qual assisteixes",
   "galleryPhotoProfileTitle": "Nova foto de {{name}}",
-  "galleryPhotoProfileBody": "{{name}} ha compartit una foto nova al seu perfil"
+  "galleryPhotoProfileBody": "{{name}} ha compartit una foto nova al seu perfil",
+  "eventChatMessageTitle": "Nou missatge a {{eventTitle}}",
+  "eventChatMessageBody": "{{name}}: {{message}}"
 }

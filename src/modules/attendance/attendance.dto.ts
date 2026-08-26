@@ -8,6 +8,9 @@ export class AttendanceDto {
   id?: string;
   userId!: string;
   eventId!: string;
+  /** See AttendanceDocument's own doc comment - absent means "use createdAt
+   * as the chat history cutoff", 0 means full history. */
+  chatVisibleFrom?: number;
   createdAt!: number;
 }
 
@@ -38,6 +41,10 @@ export class CreateAttendanceDto {
 
   @IsMongoId({ message: msg('isMongoId') })
   eventId!: string;
+
+  @IsOptional()
+  @IsNumber({}, { message: msg('isNumber') })
+  chatVisibleFrom?: number;
 
   @IsOptional()
   @IsNumber({}, { message: msg('isNumber') })

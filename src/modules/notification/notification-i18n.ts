@@ -41,6 +41,7 @@ const TEMPLATE_KEYS: Record<NotificationType, { title: string; body: string }> =
   gallery_photo_followed: { title: 'galleryPhotoFollowedTitle', body: 'galleryPhotoFollowedBody' },
   gallery_photo_attending: { title: 'galleryPhotoAttendingTitle', body: 'galleryPhotoAttendingBody' },
   gallery_photo_profile: { title: 'galleryPhotoProfileTitle', body: 'galleryPhotoProfileBody' },
+  event_chat_message: { title: 'eventChatMessageTitle', body: 'eventChatMessageBody' },
 };
 
 export function renderNotification(

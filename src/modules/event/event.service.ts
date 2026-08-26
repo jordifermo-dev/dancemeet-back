@@ -163,6 +163,7 @@ export class EventService {
       this.attendanceService.createAttendance({
         userId: created.creatorId,
         eventId: created.id!,
+        chatVisibleFrom: 0,
         createdAt: Date.now(),
       }),
     ]);
@@ -250,7 +251,12 @@ export class EventService {
         this.favoriteService.createFavorite({ userId: event.creatorId, eventId: event.id!, createdAt: Date.now() }),
       ),
       ...events.map((event) =>
-        this.attendanceService.createAttendance({ userId: event.creatorId, eventId: event.id!, createdAt: Date.now() }),
+        this.attendanceService.createAttendance({
+          userId: event.creatorId,
+          eventId: event.id!,
+          chatVisibleFrom: 0,
+          createdAt: Date.now(),
+        }),
       ),
     ]);
     await this.notifyAboutRecurringSeries(events);
@@ -411,7 +417,12 @@ export class EventService {
       ...events
         .slice(1)
         .map((event) =>
-          this.attendanceService.createAttendance({ userId: event.creatorId, eventId: event.id!, createdAt: Date.now() }),
+          this.attendanceService.createAttendance({
+            userId: event.creatorId,
+            eventId: event.id!,
+            chatVisibleFrom: 0,
+            createdAt: Date.now(),
+          }),
         ),
     ]);
     await this.notifyAboutRecurringSeries(events);

@@ -12,3 +12,4 @@ export { EventReminderModule } from './event/event-reminder.module';
 export { EventManagerModule } from './event-manager/event-manager.module';
 export { GalleryModule } from './gallery/gallery.module';
 export { AttendanceModule } from './attendance/attendance.module';
+export { EventChatModule } from './event-chat/event-chat.module';

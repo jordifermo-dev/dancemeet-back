@@ -1,7 +1,7 @@
 import { Model } from 'mongoose';
 import { mapEventManagerToDto } from '../../config/mongoose.config';
 import { EventManagerDto } from './event-manager.dto';
-import { EventManagerDocument, EventManagerRole, EventManagerStatus } from './event-manager.schema';
+import { ChatHistoryAccess, EventManagerDocument, EventManagerRole, EventManagerStatus } from './event-manager.schema';
 import { handleDbOperation } from '../../common';
 
 export class EventManagerRepository {
@@ -14,6 +14,7 @@ export class EventManagerRepository {
     userId: string;
     invitedByUserId: string;
     role: EventManagerRole;
+    chatHistoryAccess: ChatHistoryAccess;
   }): Promise<EventManagerDto> {
     return handleDbOperation(this.resourceName, 'create', async () => {
       const createdDocument = await this.eventManagerModel.create({
@@ -35,6 +36,7 @@ export class EventManagerRepository {
     userId: string,
     invitedByUserId: string,
     role: EventManagerRole,
+    chatHistoryAccess: ChatHistoryAccess,
   ): Promise<EventManagerDto[]> {
     return handleDbOperation(this.resourceName, 'createMany', async () => {
       const now = Date.now();
@@ -44,6 +46,7 @@ export class EventManagerRepository {
           userId,
           invitedByUserId,
           role,
+          chatHistoryAccess,
           status: 'pending' as const,
           createdAt: now,
         })),
@@ -61,11 +64,15 @@ export class EventManagerRepository {
     userId: string,
     invitedByUserId: string,
     role: EventManagerRole,
+    chatHistoryAccess: ChatHistoryAccess,
   ): Promise<void> {
     return handleDbOperation(this.resourceName, 'upsertAsPending', async () => {
       await this.eventManagerModel.updateMany(
         { eventId: { $in: eventIds }, userId },
-        { $set: { invitedByUserId, role, status: 'pending', createdAt: Date.now() }, $unset: { respondedAt: 1 } },
+        {
+          $set: { invitedByUserId, role, chatHistoryAccess, status: 'pending', createdAt: Date.now() },
+          $unset: { respondedAt: 1 },
+        },
       );
     });
   }
