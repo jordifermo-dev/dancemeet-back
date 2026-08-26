@@ -27,9 +27,11 @@ export class GalleryService {
    * organizer left allowAttendeePhotos on) - this method doesn't duplicate
    * any of that. After saving the photo, fans out two kinds of notification:
    * to the poster's own followers, and to the event's other attendees -
-   * neither includes the poster themselves, and someone who's both a
-   * follower and an attendee may get both notifications (a deliberate v1
-   * simplification, not deduped between the two).
+   * neither includes the poster themselves. Someone who's both a follower
+   * and an attendee only gets the attendee notification (gallery_photo_
+   * attending), not both - that template is the one that names the public/
+   * private gallery explicitly, so it's the more informative of the two for
+   * whoever qualifies either way.
    */
   async postPhoto(eventId: string, posterUserId: string, photoUrl: string): Promise<GalleryPhotoDto> {
     const event = await this.eventService.assertCanPostPhoto(eventId, posterUserId);
@@ -48,11 +50,14 @@ export class GalleryService {
       this.userService.getFollowersDetailed(posterUserId),
       this.attendanceService.getEventAttendeesDetailed(eventId),
     ]);
-    const followerIds = followers.map((follower) => follower.id).filter((id) => id !== posterUserId);
     const attendeeIds = attendees.map((attendee) => attendee.id).filter((id) => id !== posterUserId);
+    const attendeeIdSet = new Set(attendeeIds);
+    const followerOnlyIds = followers
+      .map((follower) => follower.id)
+      .filter((id) => id !== posterUserId && !attendeeIdSet.has(id));
 
     await Promise.all([
-      this.notificationService.notifyMany(followerIds, 'gallery_photo_followed', {
+      this.notificationService.notifyMany(followerOnlyIds, 'gallery_photo_followed', {
         name: posterName,
         eventTitle: event.title,
         eventId,
