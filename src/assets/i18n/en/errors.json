@@ -80,6 +80,10 @@
   "FORBIDDEN_POST_PROFILE_PHOTO": "You can only manage photos on your own profile",
   "FORBIDDEN_EDIT_MESSAGE": "You can only edit your own messages",
   "FORBIDDEN_DELETE_MESSAGE": "You can only delete your own messages",
+  "FORBIDDEN_REVIEW_NOT_FINISHED": "You can only review an event once it has finished",
+  "FORBIDDEN_REVIEW_OWN_EVENT": "You can't review an event you organize or co-organize",
+  "FORBIDDEN_REVIEW_NOT_ATTENDED": "Only attendees can review this event",
+  "FORBIDDEN_DELETE_REVIEW": "You can only delete your own reviews",
   "validation": {
     "isNotEmpty": "$t(errors.fields.{property}) should not be empty",
     "isString": "$t(errors.fields.{property}) must be text",

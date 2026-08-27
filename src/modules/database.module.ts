@@ -12,6 +12,7 @@ import {
   GALLERY_MODEL,
   ATTENDANCE_MODEL,
   EVENT_CHAT_MODEL,
+  REVIEW_MODEL,
 } from '../config/mongoose.config';
 import { DisciplineModel } from './discipline/discipline.schema';
 import { EventTypeModel } from './event-type/event-type.schema';
@@ -24,6 +25,7 @@ import { EventManagerModel } from './event-manager/event-manager.schema';
 import { GalleryPhotoModel } from './gallery/gallery.schema';
 import { AttendanceModel } from './attendance/attendance.schema';
 import { EventMessageModel } from './event-chat/event-chat.schema';
+import { ReviewModel } from './review/review.schema';
 import { HealthModule } from '../health/health.module';
 
 @Global()
@@ -80,6 +82,10 @@ import { HealthModule } from '../health/health.module';
       provide: EVENT_CHAT_MODEL,
       useFactory: () => EventMessageModel,
     },
+    {
+      provide: REVIEW_MODEL,
+      useFactory: () => ReviewModel,
+    },
   ],
   exports: [
     'DATABASE',
@@ -94,6 +100,7 @@ import { HealthModule } from '../health/health.module';
     GALLERY_MODEL,
     ATTENDANCE_MODEL,
     EVENT_CHAT_MODEL,
+    REVIEW_MODEL,
   ],
   imports: [HealthModule],
 })

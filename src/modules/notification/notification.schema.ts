@@ -13,7 +13,9 @@ export type NotificationType =
   | 'gallery_photo_followed'
   | 'gallery_photo_attending'
   | 'gallery_photo_profile'
-  | 'event_chat_message';
+  | 'event_chat_message'
+  | 'event_review_created'
+  | 'event_review_replied';
 
 export const NOTIFICATION_TYPES: NotificationType[] = [
   'new_follower',
@@ -29,6 +31,8 @@ export const NOTIFICATION_TYPES: NotificationType[] = [
   'gallery_photo_attending',
   'gallery_photo_profile',
   'event_chat_message',
+  'event_review_created',
+  'event_review_replied',
 ];
 
 export interface NotificationDocument extends Document {

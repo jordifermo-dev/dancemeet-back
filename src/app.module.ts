@@ -22,6 +22,7 @@ import {
   GalleryModule,
   AttendanceModule,
   EventChatModule,
+  ReviewModule,
 } from './modules';
 import { HealthModule } from './health/health.module';
 
@@ -51,6 +52,7 @@ import { HealthModule } from './health/health.module';
     GalleryModule,
     AttendanceModule,
     EventChatModule,
+    ReviewModule,
     HealthModule,
   ],
   controllers: [AppController],

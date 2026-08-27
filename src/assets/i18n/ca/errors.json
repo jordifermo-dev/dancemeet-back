@@ -80,6 +80,10 @@
   "FORBIDDEN_POST_PROFILE_PHOTO": "Només pots gestionar les fotos del teu propi perfil",
   "FORBIDDEN_EDIT_MESSAGE": "Només pots editar els teus propis missatges",
   "FORBIDDEN_DELETE_MESSAGE": "Només pots eliminar els teus propis missatges",
+  "FORBIDDEN_REVIEW_NOT_FINISHED": "Només es pot ressenyar un esdeveniment que ja ha finalitzat",
+  "FORBIDDEN_REVIEW_OWN_EVENT": "No pots ressenyar un esdeveniment que organitzes o coorganitzes",
+  "FORBIDDEN_REVIEW_NOT_ATTENDED": "Només qui hi va assistir pot ressenyar aquest esdeveniment",
+  "FORBIDDEN_DELETE_REVIEW": "Només pots eliminar les teves pròpies ressenyes",
   "validation": {
     "isNotEmpty": "$t(errors.fields.{property}) no pot estar buit",
     "isString": "$t(errors.fields.{property}) ha de ser text",

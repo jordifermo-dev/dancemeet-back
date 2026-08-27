@@ -19,6 +19,7 @@ import { EventManagerDto } from '../modules/event-manager/event-manager.dto';
 import { GalleryPhotoDto } from '../modules/gallery/gallery.dto';
 import { AttendanceDto } from '../modules/attendance/attendance.dto';
 import { EventMessageDto } from '../modules/event-chat/event-chat.dto';
+import { ReviewDto } from '../modules/review/review.dto';
 
 export const DISCIPLINE_MODEL = 'DISCIPLINE_MODEL';
 export const EVENT_TYPE_MODEL = 'EVENT_TYPE_MODEL';
@@ -31,6 +32,7 @@ export const EVENT_MANAGER_MODEL = 'EVENT_MANAGER_MODEL';
 export const GALLERY_MODEL = 'GALLERY_MODEL';
 export const ATTENDANCE_MODEL = 'ATTENDANCE_MODEL';
 export const EVENT_CHAT_MODEL = 'EVENT_CHAT_MODEL';
+export const REVIEW_MODEL = 'REVIEW_MODEL';
 
 export async function connectMongoose(): Promise<typeof mongoose> {
   const uri = process.env.MONGODB_URI;
@@ -166,6 +168,27 @@ export function mapGalleryPhotoToDto(document: any): GalleryPhotoDto {
     showInPrivateGallery: document.showInPrivateGallery ?? false,
     createdAt: document.createdAt,
     reactions: (document.reactions ?? []).map((reaction: any) => ({ emoji: reaction.emoji, userId: reaction.userId })),
+  };
+}
+
+export function mapReviewToDto(document: any): ReviewDto {
+  return {
+    id: document._id?.toString(),
+    eventId: document.eventId,
+    authorUserId: document.authorUserId,
+    organizerId: document.organizerId,
+    rating: document.rating,
+    comment: document.comment,
+    createdAt: document.createdAt,
+    updatedAt: document.updatedAt,
+    organizerReply: document.organizerReply
+      ? {
+          text: document.organizerReply.text,
+          repliedByUserId: document.organizerReply.repliedByUserId,
+          createdAt: document.organizerReply.createdAt,
+          updatedAt: document.organizerReply.updatedAt,
+        }
+      : undefined,
   };
 }
 
