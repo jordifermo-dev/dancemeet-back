@@ -28,5 +28,9 @@
   "eventReviewCreatedTitle": "Nova ressenya",
   "eventReviewCreatedBody": "{{name}} ha valorat \"{{eventTitle}}\" amb {{rating}} estrelles",
   "eventReviewRepliedTitle": "Resposta a la teva ressenya",
-  "eventReviewRepliedBody": "L'organitzador de \"{{eventTitle}}\" ha respost la teva ressenya"
+  "eventReviewRepliedBody": "L'organitzador de \"{{eventTitle}}\" ha respost la teva ressenya",
+  "eventJoinRequestTitle": "Sol·licitud d'assistència",
+  "eventJoinRequestBody": "{{name}} vol unir-se a \"{{eventTitle}}\"",
+  "eventJoinApprovedTitle": "Sol·licitud aprovada",
+  "eventJoinApprovedBody": "{{name}} ha aprovat la teva sol·licitud per a \"{{eventTitle}}\""
 }

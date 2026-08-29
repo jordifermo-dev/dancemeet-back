@@ -35,6 +35,33 @@ export class EventManagerController {
     return { success: true };
   }
 
+  /** Self-serve join request (event.joinMode === 'approval') - see
+   * EventManagerService.requestToJoin. Distinct from the plain self-attend
+   * toggle (AttendanceController), which only applies to 'open' events. */
+  @Post('join-request')
+  async requestToJoin(@Param('eventId') eventId: string, @CurrentUser() user: UserDto): Promise<{ success: boolean }> {
+    await this.eventManagerService.requestToJoin(eventId, user.id!);
+    return { success: true };
+  }
+
+  /** Organizer-side approve/decline of someone else's join request - same
+   * body shape as respondToInvite's PATCH me, but keyed by the requester's
+   * userId (a route param) instead of the caller's own identity. */
+  @Patch(':userId/join-request')
+  async respondToJoinRequest(
+    @Param('eventId') eventId: string,
+    @Param('userId') requesterId: string,
+    @Body() dto: RespondToInviteDto,
+    @CurrentUser() user: UserDto,
+  ): Promise<{ success: boolean }> {
+    if (dto.accept) {
+      await this.eventManagerService.approveJoinRequest(eventId, requesterId, user.id!);
+    } else {
+      await this.eventManagerService.declineJoinRequest(eventId, requesterId, user.id!);
+    }
+    return { success: true };
+  }
+
   @Delete(':userId')
   async removeParticipant(
     @Param('eventId') eventId: string,

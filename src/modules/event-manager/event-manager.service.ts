@@ -138,12 +138,20 @@ export class EventManagerService {
     if (!pending.length) {
       throw new ResourceNotFoundException('EventManagerInvite', `event "${eventId}" / user "${userId}"`);
     }
+    await this.applyResponse(eventIds, userId, accept, pending[0].chatHistoryAccess);
+  }
 
+  /** Shared accept/decline mechanics behind respondToInvite (the invitee
+   * responding to their own invite) and approveJoinRequest/declineJoinRequest
+   * (an organizer responding to someone else's self-requested join, see
+   * requestToJoin) - declining deletes the row(s), accepting flips them to
+   * 'accepted' and grants real attendance + favorite, identically either way. */
+  private async applyResponse(eventIds: string[], userId: string, accept: boolean, chatHistoryAccess: ChatHistoryAccess): Promise<void> {
     if (accept) {
       await this.eventManagerRepository.updateStatusManyByEventsAndUser(eventIds, userId, 'accepted');
       // Same choice on every instance of a series - one invite covers all
       // of them, see inviteParticipant's own series handling.
-      const chatVisibleFrom = pending[0].chatHistoryAccess === 'full' ? 0 : undefined;
+      const chatVisibleFrom = chatHistoryAccess === 'full' ? 0 : undefined;
       await Promise.all([
         this.attendanceService.ensureAttendingMany(userId, eventIds, chatVisibleFrom),
         this.favoriteService.ensureFavoritedMany(userId, eventIds),
@@ -151,6 +159,117 @@ export class EventManagerService {
     } else {
       await this.eventManagerRepository.deleteManyByEventsAndUser(eventIds, userId);
     }
+  }
+
+  /**
+   * Self-serve counterpart of inviteParticipant - lets a non-participant ask
+   * to join an event whose organizer requires approval (event.joinMode ===
+   * 'approval'; for 'open' events, AttendanceService.addAttendance's plain
+   * self-attend is the right call instead - see event-detail.page.ts's
+   * joinMode branch). Creates a pending 'attendee'-role row exactly like an
+   * invite, except invitedByUserId is the requester's own id instead of an
+   * organizer's (see EventManagerDetailedDto's own doc comment) - that's the
+   * only signal the "Asistentes" screen uses to tell a self-request apart
+   * from an organizer-sent invite. Grants no attendance/private-area access
+   * until approveJoinRequest actually accepts it, same as any other pending
+   * row (see EventService.assertCanAccessPrivateArea).
+   */
+  async requestToJoin(eventId: string, requestingUserId: string): Promise<void> {
+    const event = await this.eventService.findById(eventId);
+    if (!event) {
+      throw new ResourceNotFoundException('Event', eventId);
+    }
+    if (event.joinMode !== 'approval') {
+      throw new BusinessRuleException(
+        `Event "${eventId}" doesn't require approval to join`,
+        'errors.BUSINESS_EVENT_NOT_APPROVAL_MODE',
+        { eventId },
+      );
+    }
+    if (requestingUserId === event.creatorId) {
+      throw new BusinessRuleException(
+        `User "${requestingUserId}" already fully manages this event as its creator`,
+        'errors.BUSINESS_ALREADY_MANAGER',
+        { userId: requestingUserId },
+      );
+    }
+    const eventIds = await this.resolveSeriesEventIds(event.seriesId, eventId);
+    const existing = await this.eventManagerRepository.findByEventsAndUser(eventIds, requestingUserId);
+    if (existing.length) {
+      throw new BusinessRuleException(
+        `User "${requestingUserId}" already has an invite or request for this event`,
+        'errors.BUSINESS_ALREADY_MANAGER',
+        { userId: requestingUserId },
+      );
+    }
+    if (await this.attendanceService.isAttending(requestingUserId, eventId)) {
+      throw new BusinessRuleException(
+        `User "${requestingUserId}" already attends event "${eventId}"`,
+        'errors.BUSINESS_ALREADY_ATTENDING',
+        { userId: requestingUserId, eventId },
+      );
+    }
+    if (eventIds.length > 1) {
+      await this.eventManagerRepository.createMany(eventIds, requestingUserId, requestingUserId, 'attendee', 'fromJoin');
+    } else {
+      await this.eventManagerRepository.create({
+        eventId,
+        userId: requestingUserId,
+        invitedByUserId: requestingUserId,
+        role: 'attendee',
+        chatHistoryAccess: 'fromJoin',
+      });
+    }
+    const requester = await this.userService.findById(requestingUserId);
+    const notifiableIds = await this.getNotifiableManagerIds(eventId, event.creatorId);
+    await this.notificationService.notifyMany(notifiableIds, 'event_join_request', {
+      eventId,
+      eventTitle: event.title,
+      name: requester?.name ?? '',
+    });
+  }
+
+  /** The creator plus every accepted manager - who a new join request
+   * notifies, same audience allowed to approve/decline it (assertCanManage). */
+  private async getNotifiableManagerIds(eventId: string, creatorId: string): Promise<string[]> {
+    const rows = await this.eventManagerRepository.findByEvent(eventId);
+    const managerIds = rows.filter((row) => row.role === 'manager' && row.status === 'accepted').map((row) => row.userId);
+    return [...new Set([creatorId, ...managerIds])];
+  }
+
+  /**
+   * Organizer-side accept for a self-requested join (see requestToJoin) -
+   * same permission level as inviting (assertCanManage: creator or any
+   * accepted manager), reuses applyResponse's accept branch. Errors the same
+   * way respondToInvite does if there's nothing pending for this requester.
+   */
+  async approveJoinRequest(eventId: string, requesterId: string, approvingUserId: string): Promise<void> {
+    const event = await this.eventService.assertCanManage(eventId, approvingUserId);
+    const eventIds = await this.resolveSeriesEventIds(event.seriesId, eventId);
+    const pending = await this.eventManagerRepository.findByEventsAndUser(eventIds, requesterId);
+    if (!pending.length) {
+      throw new ResourceNotFoundException('EventManagerInvite', `event "${eventId}" / user "${requesterId}"`);
+    }
+    await this.applyResponse(eventIds, requesterId, true, pending[0].chatHistoryAccess);
+    const approver = await this.userService.findById(approvingUserId);
+    await this.notificationService.notify(requesterId, 'event_join_approved', {
+      eventId,
+      eventTitle: event.title,
+      name: approver?.name ?? '',
+    });
+  }
+
+  /** Organizer-side decline for a self-requested join - same permission as
+   * approveJoinRequest, silently deletes the row(s) (no notification), same
+   * as declining an invite today. */
+  async declineJoinRequest(eventId: string, requesterId: string, decliningUserId: string): Promise<void> {
+    const event = await this.eventService.assertCanManage(eventId, decliningUserId);
+    const eventIds = await this.resolveSeriesEventIds(event.seriesId, eventId);
+    const pending = await this.eventManagerRepository.findByEventsAndUser(eventIds, requesterId);
+    if (!pending.length) {
+      throw new ResourceNotFoundException('EventManagerInvite', `event "${eventId}" / user "${requesterId}"`);
+    }
+    await this.applyResponse(eventIds, requesterId, false, pending[0].chatHistoryAccess);
   }
 
   /**
@@ -212,6 +331,7 @@ export class EventManagerService {
           userDisciplineIds: user.disciplineIds,
           role: row.role,
           status: row.status,
+          invitedByUserId: row.invitedByUserId,
           createdAt: row.createdAt,
         };
       })

@@ -23,6 +23,9 @@ const msg = (rule: string) => i18nValidationMessage(`errors.validation.${rule}`)
 export const EVENT_STATUSES = ['published', 'cancelled', 'finished'] as const;
 export type EventStatus = (typeof EVENT_STATUSES)[number];
 
+export const EVENT_JOIN_MODES = ['open', 'approval'] as const;
+export type EventJoinMode = (typeof EVENT_JOIN_MODES)[number];
+
 export class EventDto {
   id?: string;
   title!: string;
@@ -38,6 +41,7 @@ export class EventDto {
   isFree!: boolean;
   price!: number;
   allowAttendeePhotos!: boolean;
+  joinMode!: EventJoinMode;
   creatorId!: string;
   address!: string;
   city!: string;
@@ -52,9 +56,18 @@ export class EventDto {
 
 /** An event returned by the combined filter search, hydrated with the
  * creator's name so the Events tab list can render a full card without a
- * request per event (same idea as FavoritedEventDto). */
+ * request per event (same idea as FavoritedEventDto). attendeesCount/
+ * likesCount/reviewsCount/averageRating are batch-computed once for the
+ * whole result list (see EventService.searchEvents), not per event - they
+ * power the event-card badges. Optional: this DTO is also reused by
+ * getEventDetail (a single event), which doesn't populate them since
+ * event-detail already fetches its own richer attendee/review data. */
 export class SearchedEventDto extends EventDto {
   creatorName!: string;
+  attendeesCount?: number;
+  likesCount?: number;
+  reviewsCount?: number;
+  averageRating?: number;
 }
 
 export class CreateEventDto {
@@ -108,6 +121,10 @@ export class CreateEventDto {
   @IsNumber({}, { message: msg('isNumber') })
   @Min(0, { message: msg('min') })
   price!: number;
+
+  @IsOptional()
+  @IsIn(EVENT_JOIN_MODES, { message: msg('isIn') })
+  joinMode?: EventJoinMode;
 
   @IsMongoId({ message: msg('isMongoId') })
   creatorId!: string;
@@ -202,6 +219,10 @@ export class UpdateEventDto {
   @IsOptional()
   @IsBoolean({ message: msg('isBoolean') })
   allowAttendeePhotos?: boolean;
+
+  @IsOptional()
+  @IsIn(EVENT_JOIN_MODES, { message: msg('isIn') })
+  joinMode?: EventJoinMode;
 
   @IsOptional()
   @IsMongoId({ message: msg('isMongoId') })

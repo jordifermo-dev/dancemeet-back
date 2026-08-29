@@ -102,4 +102,31 @@ export class EventChatRepository {
       });
     });
   }
+
+  /** Batched countUnread for event-card badges - one $in query across every
+   * event the caller already knows a per-event threshold for (see
+   * EventChatService.getUnreadCountsByEvents), reduced in memory rather than
+   * an aggregation. An event absent from thresholdByEventId is simply never
+   * queried, so it can never appear in the result - callers rely on this to
+   * scope badges to events the viewer actually attends. */
+  async countUnreadManyByEvents(thresholdByEventId: Map<string, number>, excludeUserId: string): Promise<Map<string, number>> {
+    return handleDbOperation(this.resourceName, 'countUnreadManyByEvents', async () => {
+      const countByEventId = new Map<string, number>();
+      const eventIds = [...thresholdByEventId.keys()];
+      if (!eventIds.length) {
+        return countByEventId;
+      }
+      const documents = await this.eventMessageModel
+        .find({ eventId: { $in: eventIds }, senderId: { $ne: excludeUserId }, deletedAt: { $exists: false } })
+        .select('eventId createdAt')
+        .lean();
+      for (const document of documents) {
+        const threshold = thresholdByEventId.get(document.eventId) ?? 0;
+        if (document.createdAt > threshold) {
+          countByEventId.set(document.eventId, (countByEventId.get(document.eventId) ?? 0) + 1);
+        }
+      }
+      return countByEventId;
+    });
+  }
 }

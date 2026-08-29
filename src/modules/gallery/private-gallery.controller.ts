@@ -30,4 +30,16 @@ export class PrivateGalleryController {
   ): Promise<GalleryPhotoDto> {
     return await this.galleryService.postPrivatePhoto(eventId, user.id!, dto.photoUrl);
   }
+
+  @Get('unread-count')
+  async getUnreadCount(@Param('eventId') eventId: string, @CurrentUser() user: UserDto): Promise<{ count: number }> {
+    const count = await this.galleryService.getUnreadCount(eventId, user.id!, 'private');
+    return { count };
+  }
+
+  @Post('read')
+  async markRead(@Param('eventId') eventId: string, @CurrentUser() user: UserDto): Promise<{ success: boolean }> {
+    await this.galleryService.markGalleryRead(eventId, user.id!, 'private');
+    return { success: true };
+  }
 }

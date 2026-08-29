@@ -17,6 +17,8 @@ import {
 } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 import { SocialLinksDto } from '../../common/social-links.dto';
+import { EVENT_JOIN_MODES } from './event.dto';
+import type { EventJoinMode } from './event.dto';
 
 const msg = (rule: string) => i18nValidationMessage(`errors.validation.${rule}`);
 
@@ -130,6 +132,10 @@ export class CreateEventSeriesDto {
   @IsNumber({}, { message: msg('isNumber') })
   @Min(0, { message: msg('min') })
   price!: number;
+
+  @IsOptional()
+  @IsIn(EVENT_JOIN_MODES, { message: msg('isIn') })
+  joinMode?: EventJoinMode;
 
   @IsMongoId({ message: msg('isMongoId') })
   creatorId!: string;

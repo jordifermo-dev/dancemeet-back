@@ -20,6 +20,23 @@ export class FavoriteDto {
 export class FavoritedEventDto extends EventDto {
   creatorName!: string;
   relation!: 'creator' | 'favorite';
+  attendeesCount!: number;
+  likesCount!: number;
+  reviewsCount!: number;
+  averageRating!: number;
+  /** Whether the *viewer* (not the card's own creatorId/relation) genuinely
+   * attends this event - a plain 'favorite' relation does NOT imply this
+   * (liking an event you don't attend is normal), unlike 'creator', which
+   * always does. Drives the attendee-count icon's active/grey state on the
+   * card (event-card.component.ts), same idea as isLiked. */
+  isAttending!: boolean;
+  /** Unread-message/new-photo card badges - undefined (not 0) for an event
+   * this user doesn't genuinely attend (see FavoriteService.
+   * getFavoritedEventsDetailed/EventChatService.getUnreadCountsByEvents) -
+   * the frontend only ever renders a badge when the field is present. */
+  unreadChatCount?: number;
+  unreadGalleryCount?: number;
+  unreadPrivateGalleryCount?: number;
 }
 
 export class CreateFavoriteDto {

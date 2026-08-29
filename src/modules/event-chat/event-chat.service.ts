@@ -146,6 +146,25 @@ export class EventChatService {
     return this.repository.countUnread(eventId, since, userId);
   }
 
+  /** Batched getUnreadCount, for event-card badges (see FavoriteService) -
+   * no assertCanAccessPrivateArea per event (would defeat the point of
+   * batching); scoped naturally instead, since only events with a real
+   * Attendance row get a threshold at all, so a merely-favorited/non-attended
+   * event just never appears in the result. */
+  async getUnreadCountsByEvents(eventIds: string[], userId: string): Promise<Map<string, number>> {
+    if (!eventIds.length) {
+      return new Map();
+    }
+    const attendances = await this.attendanceService.findByUserAndEvents(userId, eventIds);
+    const thresholdByEventId = new Map(
+      attendances.map((attendance) => [
+        attendance.eventId,
+        Math.max(attendance.chatVisibleFrom ?? attendance.createdAt, attendance.lastReadChatAt ?? 0),
+      ]),
+    );
+    return this.repository.countUnreadManyByEvents(thresholdByEventId, userId);
+  }
+
   async reactToMessage(eventId: string, messageId: string, userId: string, emoji: string): Promise<GroupedReactionDto[]> {
     await this.eventService.assertCanAccessPrivateArea(eventId, userId);
     const updated = await this.repository.addReaction(messageId, emoji, userId);

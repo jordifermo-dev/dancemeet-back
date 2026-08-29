@@ -9,6 +9,10 @@ import {
 import { UserService } from '../user/user.service';
 import { EventService } from '../event/event.service';
 import { EventManagerService } from '../event-manager/event-manager.service';
+import { AttendanceService } from '../attendance/attendance.service';
+import { ReviewService } from '../review/review.service';
+import { EventChatService } from '../event-chat/event-chat.service';
+import { GalleryService } from '../gallery/gallery.service';
 
 /** A Favorite is a plain "me gusta" a user puts on an event - marks the
  * heart filled and lists the event under Favoritos, nothing more. It does
@@ -34,6 +38,24 @@ export class FavoriteService {
    * (EventManagerService.respondToInvite calls ensureFavoritedMany below). */
   private get eventManagerService(): EventManagerService {
     return this.moduleRef.get(EventManagerService, { strict: false });
+  }
+
+  /** Same reasoning as eventService above - circular with AttendanceModule. */
+  private get attendanceService(): AttendanceService {
+    return this.moduleRef.get(AttendanceService, { strict: false });
+  }
+
+  /** Same reasoning as eventService above - circular with ReviewModule. */
+  private get reviewService(): ReviewService {
+    return this.moduleRef.get(ReviewService, { strict: false });
+  }
+
+  private get eventChatService(): EventChatService {
+    return this.moduleRef.get(EventChatService, { strict: false });
+  }
+
+  private get galleryService(): GalleryService {
+    return this.moduleRef.get(GalleryService, { strict: false });
   }
 
   /**
@@ -72,15 +94,44 @@ export class FavoriteService {
     const events = await this.eventService.findByIds(allEventIds);
     const creators = await this.userService.findByIds([...new Set(events.map((e) => e.creatorId))]);
     const creatorNameById = new Map(creators.map((creator) => [creator.id, creator.name]));
+    const eventIds = events.map((event) => event.id!);
+    const [attendeesCountByEventId, likesCountByEventId, ratingByEventId, unreadChatByEventId, unreadGalleryByEventId, unreadPrivateGalleryByEventId, myAttendances] =
+      await Promise.all([
+        this.attendanceService.countAttendanceByEvents(eventIds),
+        this.countFavoritesByEvents(eventIds),
+        this.reviewService.getRatingsByEventIds(eventIds),
+        // Unread badges: naturally scoped to events this user genuinely
+        // attends (see getUnreadCountsByEvents's own doc comment) - a merely
+        // favorited/organized-by-someone-else-and-liked event just never
+        // appears in these maps, so its DTO fields stay undefined and the
+        // card renders no badge for it.
+        this.eventChatService.getUnreadCountsByEvents(eventIds, userId),
+        this.galleryService.getUnreadCountsByEvents(eventIds, userId, 'public'),
+        this.galleryService.getUnreadCountsByEvents(eventIds, userId, 'private'),
+        // Which of these events the viewer genuinely attends (real
+        // Attendance row) - drives isAttending below, same reused batch call
+        // as the unread badges above.
+        this.attendanceService.findByUserAndEvents(userId, eventIds),
+      ]);
+    const attendingEventIds = new Set(myAttendances.map((attendance) => attendance.eventId));
 
     return events
       .map((event) => {
         const isCreator = createdEventIds.has(event.id!) || managedEventIds.has(event.id!);
         const relation: 'creator' | 'favorite' = isCreator ? 'creator' : 'favorite';
+        const rating = ratingByEventId.get(event.id!);
         return {
           ...event,
           creatorName: creatorNameById.get(event.creatorId) ?? '',
           relation,
+          attendeesCount: attendeesCountByEventId.get(event.id!) ?? 0,
+          likesCount: likesCountByEventId.get(event.id!) ?? 0,
+          reviewsCount: rating?.count ?? 0,
+          averageRating: rating?.averageRating ?? 0,
+          unreadChatCount: unreadChatByEventId.get(event.id!),
+          unreadGalleryCount: unreadGalleryByEventId.get(event.id!),
+          unreadPrivateGalleryCount: unreadPrivateGalleryByEventId.get(event.id!),
+          isAttending: attendingEventIds.has(event.id!),
         };
       })
       .sort((a, b) => b.eventDateFrom - a.eventDateFrom);
@@ -197,6 +248,10 @@ export class FavoriteService {
    */
   async countEventFavorites(eventId: string): Promise<number> {
     return await this.favoriteRepository.count({ eventId });
+  }
+
+  async countFavoritesByEvents(eventIds: string[]): Promise<Map<string, number>> {
+    return await this.favoriteRepository.countManyByEvents(eventIds);
   }
 
   /**

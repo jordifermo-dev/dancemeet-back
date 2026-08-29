@@ -142,4 +142,52 @@ export class GalleryRepository {
       return coverByEventId;
     });
   }
+
+  /** New-photo badge for a gallery tab - mirrors
+   * EventChatRepository.countUnread exactly (own photos excluded, same as
+   * the chat badge excludes own messages). scope picks which gallery
+   * (public/private) is being counted. */
+  async countUnread(eventId: string, since: number, scope: 'public' | 'private', excludePosterUserId: string): Promise<number> {
+    return handleDbOperation(this.resourceName, 'countUnread', async () => {
+      return this.galleryModel.countDocuments({
+        eventId,
+        createdAt: { $gt: since },
+        posterUserId: { $ne: excludePosterUserId },
+        [scope === 'public' ? 'showInPublicGallery' : 'showInPrivateGallery']: true,
+      });
+    });
+  }
+
+  /** Batched countUnread for event-card badges - same shape/reasoning as
+   * EventChatRepository.countUnreadManyByEvents (one $in query + in-memory
+   * reduce, scoped implicitly to whatever events thresholdByEventId names). */
+  async countUnreadManyByEvents(
+    thresholdByEventId: Map<string, number>,
+    scope: 'public' | 'private',
+    excludePosterUserId: string,
+  ): Promise<Map<string, number>> {
+    return handleDbOperation(this.resourceName, 'countUnreadManyByEvents', async () => {
+      const countByEventId = new Map<string, number>();
+      const eventIds = [...thresholdByEventId.keys()];
+      if (!eventIds.length) {
+        return countByEventId;
+      }
+      const documents = await this.galleryModel
+        .find({
+          eventId: { $in: eventIds },
+          posterUserId: { $ne: excludePosterUserId },
+          [scope === 'public' ? 'showInPublicGallery' : 'showInPrivateGallery']: true,
+        })
+        .select('eventId createdAt')
+        .lean();
+      for (const document of documents) {
+        const eventId = document.eventId!;
+        const threshold = thresholdByEventId.get(eventId) ?? 0;
+        if (document.createdAt > threshold) {
+          countByEventId.set(eventId, (countByEventId.get(eventId) ?? 0) + 1);
+        }
+      }
+      return countByEventId;
+    });
+  }
 }

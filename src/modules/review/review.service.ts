@@ -176,4 +176,8 @@ export class ReviewService {
     const { averageRating, count } = await this.repository.getOrganizerRating(organizerId);
     return { organizerId, averageRating, count };
   }
+
+  async getRatingsByEventIds(eventIds: string[]): Promise<Map<string, { averageRating: number; count: number }>> {
+    return await this.repository.getRatingsByEventIds(eventIds);
+  }
 }

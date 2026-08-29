@@ -69,9 +69,35 @@ export class AttendanceRepository {
     });
   }
 
+  /** Attendee count per event, for a whole list of events at once (event-card
+   * badges) - one $in query + in-memory reduce into a Map, same shape as
+   * GalleryRepository.findLatestCoverByEventIds, not an aggregation. */
+  async countManyByEvents(eventIds: string[]): Promise<Map<string, number>> {
+    return handleDbOperation(this.resourceName, 'countManyByEvents', async () => {
+      const countByEventId = new Map<string, number>();
+      if (!eventIds.length) {
+        return countByEventId;
+      }
+      const documents = await this.attendanceModel.find({ eventId: { $in: eventIds } }).select('eventId').lean();
+      for (const document of documents) {
+        countByEventId.set(document.eventId, (countByEventId.get(document.eventId) ?? 0) + 1);
+      }
+      return countByEventId;
+    });
+  }
+
   async updateLastReadChatAt(userId: string, eventId: string, timestamp: number): Promise<void> {
     await handleDbOperation(this.resourceName, 'updateLastReadChatAt', async () => {
       await this.attendanceModel.findOneAndUpdate({ userId, eventId }, { $set: { lastReadChatAt: timestamp } });
+    });
+  }
+
+  /** Same as updateLastReadChatAt, but for either gallery tab - scope picks
+   * which of the two independent read-cursors gets updated. */
+  async updateLastReadGalleryAt(userId: string, eventId: string, timestamp: number, scope: 'public' | 'private'): Promise<void> {
+    await handleDbOperation(this.resourceName, 'updateLastReadGalleryAt', async () => {
+      const field = scope === 'public' ? 'lastReadGalleryAt' : 'lastReadPrivateGalleryAt';
+      await this.attendanceModel.findOneAndUpdate({ userId, eventId }, { $set: { [field]: timestamp } });
     });
   }
 }

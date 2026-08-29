@@ -36,6 +36,11 @@ export class EventManagerDetailedDto {
   userDisciplineIds!: string[];
   role!: EventManagerRole;
   status!: EventManagerStatus;
+  /** Who created this row - the organizer who invited (any other id) or the
+   * user themselves (invitedByUserId === userId, see EventManagerService.
+   * requestToJoin) - the "Asistentes" screen uses this to tell a self-
+   * requested pending row apart from an organizer-sent pending invite. */
+  invitedByUserId!: string;
   createdAt!: number;
 }
 

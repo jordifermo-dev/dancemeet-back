@@ -28,5 +28,9 @@
   "eventReviewCreatedTitle": "New review",
   "eventReviewCreatedBody": "{{name}} rated \"{{eventTitle}}\" {{rating}} stars",
   "eventReviewRepliedTitle": "Reply to your review",
-  "eventReviewRepliedBody": "The organizer of \"{{eventTitle}}\" replied to your review"
+  "eventReviewRepliedBody": "The organizer of \"{{eventTitle}}\" replied to your review",
+  "eventJoinRequestTitle": "Join request",
+  "eventJoinRequestBody": "{{name}} wants to join \"{{eventTitle}}\"",
+  "eventJoinApprovedTitle": "Request approved",
+  "eventJoinApprovedBody": "{{name}} approved your request to join \"{{eventTitle}}\""
 }

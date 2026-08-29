@@ -18,6 +18,14 @@ export interface EventDocument extends Document {
    * photos to this event - defaults on, individually toggleable per event
    * (never propagated across a recurring series, unlike isFree). */
   allowAttendeePhotos: boolean;
+  /** 'open': tapping "Asistir" attends immediately (today's only behavior).
+   * 'approval': tapping "Asistir" creates a pending join request instead -
+   * an accepted manager must approve it (see EventManagerService.
+   * requestToJoin/approveJoinRequest/declineJoinRequest) - the organizer can
+   * still invite directly either way. Defaults 'open' so every existing
+   * event keeps behaving exactly as before. Editable anytime, not just at
+   * creation. */
+  joinMode: 'open' | 'approval';
   creatorId: string;
   address: string;
   city: string;
@@ -62,6 +70,7 @@ export const EventSchema = new Schema<EventDocument>(
     isFree: { type: Boolean, required: true, default: false },
     price: { type: Number, required: true, default: 0 },
     allowAttendeePhotos: { type: Boolean, required: true, default: true },
+    joinMode: { type: String, required: true, default: 'open' },
     creatorId: { type: String, required: true },
     address: { type: String, required: true, trim: true },
     city: { type: String, required: true, trim: true },

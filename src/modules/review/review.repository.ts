@@ -86,4 +86,28 @@ export class ReviewRepository {
       return { averageRating: total / documents.length, count: documents.length };
     });
   }
+
+  /** Same average+count as getOrganizerRating, but per event and batched
+   * across a whole list of events at once (event-card badges) - one $in
+   * query + in-memory reduce into a Map, same shape as
+   * GalleryRepository.findLatestCoverByEventIds. */
+  async getRatingsByEventIds(eventIds: string[]): Promise<Map<string, { averageRating: number; count: number }>> {
+    return handleDbOperation(this.resourceName, 'getRatingsByEventIds', async () => {
+      const ratingsByEventId = new Map<string, { averageRating: number; count: number }>();
+      if (!eventIds.length) {
+        return ratingsByEventId;
+      }
+      const documents = await this.reviewModel.find({ eventId: { $in: eventIds } }).select('eventId rating').lean();
+      const totalByEventId = new Map<string, number>();
+      const countByEventId = new Map<string, number>();
+      for (const document of documents) {
+        totalByEventId.set(document.eventId, (totalByEventId.get(document.eventId) ?? 0) + document.rating);
+        countByEventId.set(document.eventId, (countByEventId.get(document.eventId) ?? 0) + 1);
+      }
+      for (const [eventId, count] of countByEventId) {
+        ratingsByEventId.set(eventId, { averageRating: totalByEventId.get(eventId)! / count, count });
+      }
+      return ratingsByEventId;
+    });
+  }
 }

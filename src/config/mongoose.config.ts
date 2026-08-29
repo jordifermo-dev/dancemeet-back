@@ -95,6 +95,7 @@ export function mapEventToDto(document: any): EventDto {
     // field existed come back with it truly undefined - fall back to the
     // schema's own default (true) rather than leaving it undefined.
     allowAttendeePhotos: document.allowAttendeePhotos ?? true,
+    joinMode: document.joinMode ?? 'open',
     creatorId: document.creatorId,
     address: document.address,
     city: document.city,
@@ -138,6 +139,8 @@ export function mapAttendanceToDto(document: any): AttendanceDto {
     eventId: document.eventId,
     chatVisibleFrom: document.chatVisibleFrom,
     lastReadChatAt: document.lastReadChatAt,
+    lastReadGalleryAt: document.lastReadGalleryAt,
+    lastReadPrivateGalleryAt: document.lastReadPrivateGalleryAt,
     createdAt: document.createdAt,
   };
 }

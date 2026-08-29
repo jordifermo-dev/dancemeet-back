@@ -13,6 +13,8 @@ export class AttendanceDto {
   chatVisibleFrom?: number;
   /** See AttendanceDocument's own doc comment - absent means never read. */
   lastReadChatAt?: number;
+  lastReadGalleryAt?: number;
+  lastReadPrivateGalleryAt?: number;
   createdAt!: number;
 }
 

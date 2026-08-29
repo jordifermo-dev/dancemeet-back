@@ -129,10 +129,27 @@ export class AttendanceService {
     return await this.attendanceRepository.findByUserAndEvent(userId, eventId);
   }
 
+  /** Which of the given events this user genuinely attends (real Attendance
+   * row - covers the creator, any accepted manager, and a plain attendee
+   * alike, see AttendanceDocument's own doc comment) - events they merely
+   * favorited without attending are simply absent from the result. Used to
+   * scope card-level unread badges (see EventChatService/GalleryService's
+   * own batched getUnreadCounts*ByEvents) to events the viewer is actually
+   * part of. */
+  async findByUserAndEvents(userId: string, eventIds: string[]): Promise<AttendanceDto[]> {
+    return await this.attendanceRepository.findByUserAndEvents(userId, eventIds);
+  }
+
   /** Called when a user opens (or re-enters) an event's xat - resets the
    * unread-chat-count badge from here on (see EventChatService.getUnreadCount). */
   async markChatRead(userId: string, eventId: string): Promise<void> {
     await this.attendanceRepository.updateLastReadChatAt(userId, eventId, Date.now());
+  }
+
+  /** Same as markChatRead, but for either gallery tab (see
+   * GalleryService.getUnreadCount). */
+  async markGalleryRead(userId: string, eventId: string, scope: 'public' | 'private'): Promise<void> {
+    await this.attendanceRepository.updateLastReadGalleryAt(userId, eventId, Date.now(), scope);
   }
 
   /**
@@ -259,6 +276,10 @@ export class AttendanceService {
 
   async countEventAttendance(eventId: string): Promise<number> {
     return await this.attendanceRepository.count({ eventId });
+  }
+
+  async countAttendanceByEvents(eventIds: string[]): Promise<Map<string, number>> {
+    return await this.attendanceRepository.countManyByEvents(eventIds);
   }
 
   /**

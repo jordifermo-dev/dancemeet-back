@@ -44,6 +44,8 @@ const TEMPLATE_KEYS: Record<NotificationType, { title: string; body: string }> =
   event_chat_message: { title: 'eventChatMessageTitle', body: 'eventChatMessageBody' },
   event_review_created: { title: 'eventReviewCreatedTitle', body: 'eventReviewCreatedBody' },
   event_review_replied: { title: 'eventReviewRepliedTitle', body: 'eventReviewRepliedBody' },
+  event_join_request: { title: 'eventJoinRequestTitle', body: 'eventJoinRequestBody' },
+  event_join_approved: { title: 'eventJoinApprovedTitle', body: 'eventJoinApprovedBody' },
 };
 
 export function renderNotification(

@@ -28,5 +28,9 @@
   "eventReviewCreatedTitle": "Nueva reseña",
   "eventReviewCreatedBody": "{{name}} ha valorado \"{{eventTitle}}\" con {{rating}} estrellas",
   "eventReviewRepliedTitle": "Respuesta a tu reseña",
-  "eventReviewRepliedBody": "El organizador de \"{{eventTitle}}\" ha respondido a tu reseña"
+  "eventReviewRepliedBody": "El organizador de \"{{eventTitle}}\" ha respondido a tu reseña",
+  "eventJoinRequestTitle": "Solicitud de asistencia",
+  "eventJoinRequestBody": "{{name}} quiere unirse a \"{{eventTitle}}\"",
+  "eventJoinApprovedTitle": "Solicitud aprobada",
+  "eventJoinApprovedBody": "{{name}} ha aprobado tu solicitud para \"{{eventTitle}}\""
 }

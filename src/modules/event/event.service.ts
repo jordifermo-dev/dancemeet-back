@@ -12,6 +12,7 @@ import { FollowersService } from '../followers/followers.service';
 import { FavoriteService } from '../favorite/favorite.service';
 import { AttendanceService } from '../attendance/attendance.service';
 import { EventManagerService } from '../event-manager/event-manager.service';
+import { ReviewService } from '../review/review.service';
 
 export class EventService {
   constructor(
@@ -40,6 +41,12 @@ export class EventService {
     return this.moduleRef.get(EventManagerService, { strict: false });
   }
 
+  /** Same reasoning as favoriteService above - circular with ReviewModule
+   * (ReviewModule itself imports EventModule). */
+  private get reviewService(): ReviewService {
+    return this.moduleRef.get(ReviewService, { strict: false });
+  }
+
   /**
    * Authorization check shared by every write operation below: the creator
    * always can, an accepted manager can too, nobody else can. Returns the
@@ -59,6 +66,26 @@ export class EventService {
       throw new ForbiddenActionException(
         `User "${requestingUserId}" is not allowed to manage event "${eventId}"`,
         'errors.FORBIDDEN_MANAGE_EVENT',
+      );
+    }
+    return event;
+  }
+
+  /**
+   * Stricter than assertCanManage - only the original creator, not a
+   * co-organizer - used exclusively by delete (single event and series),
+   * everything else (edit, invite, remove-participant, recurrence) stays on
+   * the creator-or-accepted-manager rule above.
+   */
+  async assertIsCreator(eventId: string, requestingUserId: string): Promise<EventDto> {
+    const event = await this.eventRepository.findById(eventId);
+    if (!event) {
+      throw new ResourceNotFoundException('Event', eventId);
+    }
+    if (event.creatorId !== requestingUserId) {
+      throw new ForbiddenActionException(
+        `User "${requestingUserId}" is not allowed to delete event "${eventId}"`,
+        'errors.FORBIDDEN_DELETE_EVENT',
       );
     }
     return event;
@@ -344,9 +371,15 @@ export class EventService {
   /**
    * Deletes every instance of a series - no attendee notification, matching
    * deleteEvent()'s own single-event behavior (which doesn't notify either).
+   * Creator-only (see assertIsCreator) - unlike assertCanManageSeries (used
+   * by updateEventSeries), which stays open to accepted managers too.
    */
   async deleteEventSeries(seriesId: string, requestingUserId: string): Promise<number> {
-    await this.assertCanManageSeries(seriesId, requestingUserId);
+    const events = await this.eventRepository.findBySeriesId(seriesId);
+    if (!events.length) {
+      throw new ResourceNotFoundException('Event series', seriesId);
+    }
+    await this.assertIsCreator(events[0].id!, requestingUserId);
     return this.eventRepository.deleteManyBySeriesId(seriesId);
   }
 
@@ -532,7 +565,7 @@ export class EventService {
    * Delete event
    */
   async deleteEvent(eventId: string, requestingUserId: string): Promise<boolean> {
-    await this.assertCanManage(eventId, requestingUserId);
+    await this.assertIsCreator(eventId, requestingUserId);
     const deleted = await this.eventRepository.delete(eventId);
     if (!deleted) {
       throw new ResourceNotFoundException('Event', eventId);
@@ -607,10 +640,23 @@ export class EventService {
     }
     const creators = await this.userService.findByIds([...new Set(events.map((e) => e.creatorId))]);
     const creatorNameById = new Map(creators.map((creator) => [creator.id, creator.name]));
-    return events.map((event) => ({
-      ...event,
-      creatorName: creatorNameById.get(event.creatorId) ?? '',
-    }));
+    const eventIds = events.map((event) => event.id!);
+    const [attendeesCountByEventId, likesCountByEventId, ratingByEventId] = await Promise.all([
+      this.attendanceService.countAttendanceByEvents(eventIds),
+      this.favoriteService.countFavoritesByEvents(eventIds),
+      this.reviewService.getRatingsByEventIds(eventIds),
+    ]);
+    return events.map((event) => {
+      const rating = ratingByEventId.get(event.id!);
+      return {
+        ...event,
+        creatorName: creatorNameById.get(event.creatorId) ?? '',
+        attendeesCount: attendeesCountByEventId.get(event.id!) ?? 0,
+        likesCount: likesCountByEventId.get(event.id!) ?? 0,
+        reviewsCount: rating?.count ?? 0,
+        averageRating: rating?.averageRating ?? 0,
+      };
+    });
   }
 
   /**

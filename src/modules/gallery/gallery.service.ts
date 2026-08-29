@@ -345,4 +345,48 @@ export class GalleryService {
     }
     await this.repository.deleteById(photoId);
   }
+
+  /** New-photo badge for the given gallery tab - mirrors
+   * EventChatService.getUnreadCount exactly (same "since = max(joined,
+   * lastRead)" logic), just against Attendance.lastReadGalleryAt/
+   * lastReadPrivateGalleryAt instead of lastReadChatAt. The private scope
+   * additionally requires assertCanAccessPrivateArea, same as reading the
+   * private gallery itself does. */
+  async getUnreadCount(eventId: string, userId: string, scope: 'public' | 'private'): Promise<number> {
+    if (scope === 'private') {
+      await this.eventService.assertCanAccessPrivateArea(eventId, userId);
+    }
+    const attendance = await this.attendanceService.findByUserAndEvent(userId, eventId);
+    const joinedAt = attendance?.createdAt ?? 0;
+    const lastRead = (scope === 'public' ? attendance?.lastReadGalleryAt : attendance?.lastReadPrivateGalleryAt) ?? 0;
+    const since = Math.max(joinedAt, lastRead);
+    return this.repository.countUnread(eventId, since, scope, userId);
+  }
+
+  /** Called when a user opens (or re-enters) a gallery tab - resets that
+   * tab's unread-photo-count badge from here on. */
+  async markGalleryRead(eventId: string, userId: string, scope: 'public' | 'private'): Promise<void> {
+    if (scope === 'private') {
+      await this.eventService.assertCanAccessPrivateArea(eventId, userId);
+    }
+    await this.attendanceService.markGalleryRead(userId, eventId, scope);
+  }
+
+  /** Batched getUnreadCount, for event-card badges (see FavoriteService) -
+   * same reasoning as EventChatService.getUnreadCountsByEvents: no per-event
+   * assertCanAccessPrivateArea, scoped implicitly to events the viewer has a
+   * real Attendance row for. */
+  async getUnreadCountsByEvents(eventIds: string[], userId: string, scope: 'public' | 'private'): Promise<Map<string, number>> {
+    if (!eventIds.length) {
+      return new Map();
+    }
+    const attendances = await this.attendanceService.findByUserAndEvents(userId, eventIds);
+    const thresholdByEventId = new Map(
+      attendances.map((attendance) => [
+        attendance.eventId,
+        Math.max(attendance.createdAt, (scope === 'public' ? attendance.lastReadGalleryAt : attendance.lastReadPrivateGalleryAt) ?? 0),
+      ]),
+    );
+    return this.repository.countUnreadManyByEvents(thresholdByEventId, scope, userId);
+  }
 }

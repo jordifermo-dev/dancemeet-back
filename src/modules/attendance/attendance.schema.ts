@@ -24,6 +24,12 @@ export interface AttendanceDocument extends Document {
    * count just falls back to chatVisibleFrom alone (see
    * EventChatService.getUnreadCount). */
   lastReadChatAt?: number;
+  /** Same idea as lastReadChatAt, but for the public/private gallery tabs
+   * respectively - absent means never (see GalleryService.getUnreadCount,
+   * which falls back to this row's own createdAt, "only photos posted since
+   * I joined"). */
+  lastReadGalleryAt?: number;
+  lastReadPrivateGalleryAt?: number;
   createdAt: number;
 }
 
@@ -33,6 +39,8 @@ export const AttendanceSchema = new Schema<AttendanceDocument>(
     eventId: { type: String, required: true },
     chatVisibleFrom: { type: Number, required: false },
     lastReadChatAt: { type: Number, required: false },
+    lastReadGalleryAt: { type: Number, required: false },
+    lastReadPrivateGalleryAt: { type: Number, required: false },
     createdAt: { type: Number, default: () => Date.now() },
   },
   {

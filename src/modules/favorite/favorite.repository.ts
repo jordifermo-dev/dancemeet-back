@@ -68,4 +68,21 @@ export class FavoriteRepository {
       return this.favoriteModel.countDocuments(filter);
     });
   }
+
+  /** Like/favorite count per event, for a whole list of events at once
+   * (event-card badges) - one $in query + in-memory reduce into a Map, same
+   * shape as GalleryRepository.findLatestCoverByEventIds, not an aggregation. */
+  async countManyByEvents(eventIds: string[]): Promise<Map<string, number>> {
+    return handleDbOperation(this.resourceName, 'countManyByEvents', async () => {
+      const countByEventId = new Map<string, number>();
+      if (!eventIds.length) {
+        return countByEventId;
+      }
+      const documents = await this.favoriteModel.find({ eventId: { $in: eventIds } }).select('eventId').lean();
+      for (const document of documents) {
+        countByEventId.set(document.eventId, (countByEventId.get(document.eventId) ?? 0) + 1);
+      }
+      return countByEventId;
+    });
+  }
 }
