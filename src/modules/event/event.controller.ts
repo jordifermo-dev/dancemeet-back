@@ -55,13 +55,15 @@ export class EventController {
   }
 
   @Get(':id')
-  async getEventById(@Param('id') eventId: string): Promise<EventDto> {
-    return await this.eventService.getEventById(eventId);
+  @UseInterceptors(CurrentUserInterceptor)
+  async getEventById(@Param('id') eventId: string, @CurrentUser() user: UserDto): Promise<EventDto> {
+    return await this.eventService.getEventById(eventId, user.id!);
   }
 
   @Get(':id/detail')
-  async getEventDetail(@Param('id') eventId: string): Promise<SearchedEventDto> {
-    return await this.eventService.getEventDetail(eventId);
+  @UseInterceptors(CurrentUserInterceptor)
+  async getEventDetail(@Param('id') eventId: string, @CurrentUser() user: UserDto): Promise<SearchedEventDto> {
+    return await this.eventService.getEventDetail(eventId, user.id!);
   }
 
   @Get('discipline/:disciplineId')

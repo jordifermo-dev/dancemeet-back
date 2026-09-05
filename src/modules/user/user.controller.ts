@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Delete,
   Body,
   Param,
   Query,
@@ -65,6 +66,12 @@ export class UserController {
   @Post(':id/fcm-token')
   async addFcmToken(@Param('id') userId: string, @Body() body: FcmTokenDto): Promise<{ success: boolean }> {
     const success = await this.userService.addFcmToken(userId, body.token);
+    return { success };
+  }
+
+  @Delete(':id/fcm-token')
+  async removeFcmToken(@Param('id') userId: string, @Body() body: FcmTokenDto): Promise<{ success: boolean }> {
+    const success = await this.userService.removeFcmToken(userId, body.token);
     return { success };
   }
 }

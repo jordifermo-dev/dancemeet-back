@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { BadRequestException } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
-import { EventRepository } from './event.repository';
+import { EventRepository, SeriesBaseFields } from './event.repository';
 import { CreateEventDto, EventDto, SearchedEventDto, UpdateEventDto } from './event.dto';
 import { CreateEventSeriesDto, PatchEventSeriesDto, RecurrenceRuleDto } from './event-series.dto';
 import { ForbiddenActionException, ResourceNotFoundException } from '../../common';
@@ -171,13 +171,29 @@ export class EventService {
    * Create a new event
    */
   async createEvent(eventData: CreateEventDto, requestingUserId: string): Promise<EventDto> {
-    if (eventData.eventDateTo <= eventData.eventDateFrom) {
+    if (
+      eventData.eventDateFrom !== undefined &&
+      eventData.eventDateTo !== undefined &&
+      eventData.eventDateTo <= eventData.eventDateFrom
+    ) {
       throw new BadRequestException('eventDateTo must be after eventDateFrom');
     }
     // creatorId always comes from the authenticated caller, never the
     // client-supplied DTO - otherwise anyone could create an event that
     // impersonates someone else as its organizer.
     const created = await this.eventRepository.create({ ...eventData, creatorId: requestingUserId });
+    if (created.status === 'draft') {
+      // A draft isn't a real RSVP or an event worth announcing yet - only
+      // Favorite (so the creator can find it again in Favoritos/Mis Events)
+      // is created here. Attendance + notifications happen once it's
+      // actually published (see updateEvent's draft->published branch).
+      await this.favoriteService.createFavorite({
+        userId: created.creatorId,
+        eventId: created.id!,
+        createdAt: Date.now(),
+      });
+      return created;
+    }
     // Organizing an event means attending it (real RSVP - attendee list/
     // count, gallery permission) *and* liking it (heart filled) - not just
     // a display-only default.
@@ -214,9 +230,12 @@ export class EventService {
         name: creator?.name ?? '',
       });
     }
+    // Only ever called for a published event (createEvent skips this call in
+    // its draft branch, updateEvent only calls it on the draft->published
+    // transition) - disciplineIds/typeIds are guaranteed set by then.
     const matching = await this.userService.findMatchingEventPreferences(
-      event.disciplineIds,
-      event.typeIds,
+      event.disciplineIds!,
+      event.typeIds!,
       event.status,
     );
     const alreadyNotified = new Set([...followerIds, event.creatorId]);
@@ -301,9 +320,11 @@ export class EventService {
         count: String(events.length),
       });
     }
+    // A series instance is always created status: 'published' (see
+    // EventRepository.createSeries) - series creation has no draft option.
     const matching = await this.userService.findMatchingEventPreferences(
-      first.disciplineIds,
-      first.typeIds,
+      first.disciplineIds!,
+      first.typeIds!,
       first.status,
     );
     const alreadyNotified = new Set([...followerIds, first.creatorId]);
@@ -406,18 +427,23 @@ export class EventService {
     if (existing.seriesId) {
       throw new BadRequestException('This event is already part of a recurring series');
     }
-    const timeFrom = formatHHmm(existing.eventDateFrom);
-    const timeTo = formatHHmm(existing.eventDateTo);
+    // A draft has no guaranteed eventDateFrom/eventDateTo to derive a
+    // recurrence from - publish it first.
+    if (existing.status === 'draft') {
+      throw new BadRequestException('A draft event cannot be turned into a recurring series');
+    }
+    const timeFrom = formatHHmm(existing.eventDateFrom!);
+    const timeTo = formatHHmm(existing.eventDateTo!);
     const rule: RecurrenceRule = {
       frequency: ruleDto.frequency,
       interval: ruleDto.interval,
       weekdays: ruleDto.weekdays,
       nthWeekdays: ruleDto.nthWeekdays,
-      dateFrom: existing.eventDateFrom,
+      dateFrom: existing.eventDateFrom!,
       dateTo: ruleDto.dateTo ?? null,
     };
     const occurrences = expandRecurrence(rule, timeFrom, timeTo);
-    if (!occurrences.length || !isSameLocalDay(occurrences[0].eventDateFrom, existing.eventDateFrom)) {
+    if (!occurrences.length || !isSameLocalDay(occurrences[0].eventDateFrom, existing.eventDateFrom!)) {
       throw new BadRequestException("The recurrence rule must include this event's own day");
     }
     if (occurrences.length > MAX_SERIES_OCCURRENCES) {
@@ -438,7 +464,15 @@ export class EventService {
       ...baseFields
     } = existing;
     const seriesId = randomUUID();
-    const events = await this.eventRepository.attachToExistingSeries(eventId, baseFields, seriesId, occurrences);
+    // Guarded above: existing.status !== 'draft', so every field
+    // SeriesBaseFields requires is actually present despite EventDto's
+    // optional typing (which exists to allow a draft's incomplete fields).
+    const events = await this.eventRepository.attachToExistingSeries(
+      eventId,
+      baseFields as SeriesBaseFields,
+      seriesId,
+      occurrences,
+    );
     // The existing event is already liked+attended by its creator (from
     // createEvent()) - only the newly-created instances need it.
     await Promise.all([
@@ -491,9 +525,11 @@ export class EventService {
   /**
    * Get event by ID
    */
-  async getEventById(eventId: string): Promise<EventDto> {
+  async getEventById(eventId: string, requestingUserId: string): Promise<EventDto> {
     const event = await this.eventRepository.findById(eventId);
-    if (!event) {
+    // A draft is only visible to its own creator - treated as "not found"
+    // (not "forbidden") for anyone else, so its existence isn't leaked.
+    if (!event || (event.status === 'draft' && event.creatorId !== requestingUserId)) {
       throw new ResourceNotFoundException('Event', eventId);
     }
     return event;
@@ -503,9 +539,9 @@ export class EventService {
    * Get event by ID, hydrated with the creator's name - for the event-detail
    * screen, same idea as SearchedEventDto for the search list.
    */
-  async getEventDetail(eventId: string): Promise<SearchedEventDto> {
+  async getEventDetail(eventId: string, requestingUserId: string): Promise<SearchedEventDto> {
     const event = await this.eventRepository.findById(eventId);
-    if (!event) {
+    if (!event || (event.status === 'draft' && event.creatorId !== requestingUserId)) {
       throw new ResourceNotFoundException('Event', eventId);
     }
     const creator = await this.userService.findById(event.creatorId);
@@ -523,7 +559,7 @@ export class EventService {
    * Update event
    */
   async updateEvent(eventId: string, updateData: UpdateEventDto, requestingUserId: string): Promise<boolean> {
-    await this.assertCanManage(eventId, requestingUserId);
+    const existing = await this.assertCanManage(eventId, requestingUserId);
     if (
       updateData.eventDateFrom !== undefined &&
       updateData.eventDateTo !== undefined &&
@@ -535,6 +571,15 @@ export class EventService {
     // let any manager reassign ownership (and therefore who else can be a
     // manager) outside the invite/accept flow.
     const { creatorId: _creatorId, ...safeUpdateData } = updateData;
+    // The moment a draft actually becomes a real event: UpdateEventDto has
+    // every field optional, so nothing else stops an incomplete draft being
+    // flipped to 'published' here (CreateEventDto's own ValidateIf checks
+    // only run at creation time) - assertPublishReady closes that gap.
+    const nextStatus = updateData.status ?? existing.status;
+    const isPublishingDraft = existing.status === 'draft' && nextStatus === 'published';
+    if (isPublishingDraft) {
+      this.assertPublishReady({ ...existing, ...safeUpdateData });
+    }
     const updated = await this.eventRepository.update(eventId, {
       ...safeUpdateData,
       updatedAt: Date.now(),
@@ -542,8 +587,43 @@ export class EventService {
     if (!updated) {
       throw new ResourceNotFoundException('Event', eventId);
     }
-    await this.notifyAttendeesOfUpdate(eventId);
+    if (isPublishingDraft) {
+      const published = await this.eventRepository.findById(eventId);
+      if (published) {
+        // Same side effects createEvent() applies to a fresh published event
+        // - this is the first time this event is actually attended/announced.
+        await this.attendanceService.createAttendance({
+          userId: published.creatorId,
+          eventId: published.id!,
+          chatVisibleFrom: 0,
+          createdAt: Date.now(),
+        });
+        await this.notifyAboutNewEvent(published);
+      }
+    } else {
+      await this.notifyAttendeesOfUpdate(eventId);
+    }
     return true;
+  }
+
+  /** Guards a draft->published transition (see updateEvent above) - the merged
+   * doc (existing draft fields + this update's changes) must have everything
+   * a real published event needs before it's allowed to stop being a draft. */
+  private assertPublishReady(merged: Partial<EventDto>): void {
+    const missing: string[] = [];
+    if (!merged.description) missing.push('description');
+    if (!merged.imageUrl) missing.push('imageUrl');
+    if (!merged.typeIds?.length) missing.push('typeIds');
+    if (!merged.disciplineIds?.length) missing.push('disciplineIds');
+    if (merged.eventDateFrom === undefined) missing.push('eventDateFrom');
+    if (merged.eventDateTo === undefined) missing.push('eventDateTo');
+    if (!merged.address) missing.push('address');
+    if (!merged.city) missing.push('city');
+    if (merged.latitude === undefined) missing.push('latitude');
+    if (merged.longitude === undefined) missing.push('longitude');
+    if (missing.length) {
+      throw new BadRequestException(`Cannot publish an incomplete event, missing: ${missing.join(', ')}`);
+    }
   }
 
   private async notifyAttendeesOfUpdate(eventId: string): Promise<void> {

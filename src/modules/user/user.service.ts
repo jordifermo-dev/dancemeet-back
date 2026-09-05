@@ -186,4 +186,18 @@ export class UserService {
     }
     return true;
   }
+
+  /**
+   * Unregisters this device's FCM token - called on logout so a shared/test
+   * device stops receiving this account's pushes the moment it signs out,
+   * instead of only when a *different* account later signs in on it (see
+   * UserRepository.addFcmToken's own doc comment on that de-duplication).
+   */
+  async removeFcmToken(userId: string, token: string): Promise<boolean> {
+    const updated = await this.userRepository.removeFcmToken(userId, token);
+    if (!updated) {
+      throw new ResourceNotFoundException('User', userId);
+    }
+    return true;
+  }
 }

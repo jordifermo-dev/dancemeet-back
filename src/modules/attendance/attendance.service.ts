@@ -79,7 +79,9 @@ export class AttendanceService {
           relation,
         };
       })
-      .sort((a, b) => b.eventDateFrom - a.eventDateFrom);
+      // A draft has no eventDateFrom yet - surfaced first (unfinished, so
+      // the creator notices it) rather than crashing the comparator.
+      .sort((a, b) => (b.eventDateFrom ?? Infinity) - (a.eventDateFrom ?? Infinity));
   }
 
   /**

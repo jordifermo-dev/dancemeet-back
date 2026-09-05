@@ -136,9 +136,11 @@ export class EventRepository {
       const [toHours, toMinutes] = timeToHHmm.split(':').map(Number);
       const now = Date.now();
       const operations = documents.map((document) => {
-        const from = new Date(document.eventDateFrom);
+        // A series instance is always created status: 'published' (see
+        // createSeries above) - eventDateFrom is guaranteed set.
+        const from = new Date(document.eventDateFrom!);
         from.setHours(fromHours, fromMinutes, 0, 0);
-        const to = new Date(document.eventDateFrom);
+        const to = new Date(document.eventDateFrom!);
         to.setHours(toHours, toMinutes, 0, 0);
         return {
           updateOne: {
@@ -171,7 +173,7 @@ export class EventRepository {
 
   async findAll(): Promise<EventDto[]> {
     return handleDbOperation(this.resourceName, 'findAll', async () => {
-      const documents = await this.eventModel.find({}).sort({ createdAt: 1 }).lean();
+      const documents = await this.eventModel.find({ status: { $ne: 'draft' } }).sort({ createdAt: 1 }).lean();
       return documents.map((document) => mapEventToDto(document));
     });
   }
@@ -236,21 +238,23 @@ export class EventRepository {
    * matches an array field against a scalar query value automatically. */
   async findByDiscipline(disciplineId: string): Promise<EventDto[]> {
     return handleDbOperation(this.resourceName, 'findByDiscipline', async () => {
-      const documents = await this.eventModel.find({ disciplineIds: disciplineId }).lean();
+      const documents = await this.eventModel
+        .find({ disciplineIds: disciplineId, status: { $ne: 'draft' } })
+        .lean();
       return documents.map((document) => mapEventToDto(document));
     });
   }
 
   async findByType(typeId: string): Promise<EventDto[]> {
     return handleDbOperation(this.resourceName, 'findByType', async () => {
-      const documents = await this.eventModel.find({ typeIds: typeId }).lean();
+      const documents = await this.eventModel.find({ typeIds: typeId, status: { $ne: 'draft' } }).lean();
       return documents.map((document) => mapEventToDto(document));
     });
   }
 
   async findByCity(city: string): Promise<EventDto[]> {
     return handleDbOperation(this.resourceName, 'findByCity', async () => {
-      const documents = await this.eventModel.find({ city }).lean();
+      const documents = await this.eventModel.find({ city, status: { $ne: 'draft' } }).lean();
       return documents.map((document) => mapEventToDto(document));
     });
   }
@@ -269,7 +273,7 @@ export class EventRepository {
   async findUpcoming(currentTime: number): Promise<EventDto[]> {
     return handleDbOperation(this.resourceName, 'findUpcoming', async () => {
       const documents = await this.eventModel
-        .find({ eventDateFrom: { $gte: currentTime } })
+        .find({ eventDateFrom: { $gte: currentTime }, status: { $ne: 'draft' } })
         .lean();
       return documents.map((document) => mapEventToDto(document));
     });
@@ -292,6 +296,7 @@ export class EventRepository {
               $maxDistance: maxDistance,
             },
           },
+          status: { $ne: 'draft' },
         } as FilterQuery<EventDocument>)
         .lean();
       return documents.map((document) => mapEventToDto(document));
@@ -328,8 +333,14 @@ export class EventRepository {
       if (params.typeIds !== undefined) {
         filter.typeIds = { $in: params.typeIds };
       }
+      // Drafts are never a valid search/explorer result, regardless of what
+      // the caller asks for - sanitized server-side rather than trusted from
+      // the frontend's filter selection.
       if (params.statuses?.length) {
-        filter.status = { $in: params.statuses };
+        const publicStatuses = params.statuses.filter((status) => status !== 'draft');
+        filter.status = { $in: publicStatuses };
+      } else {
+        filter.status = { $ne: 'draft' };
       }
       if (params.priceOptions !== undefined) {
         const isFreeValues: boolean[] = [

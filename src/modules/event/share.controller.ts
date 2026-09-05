@@ -83,14 +83,18 @@ export class ShareController {
     const targetUrl = `${FRONTEND_URL}/events/${id}`;
     let event: EventDto;
     try {
-      event = await this.eventService.getEventById(id);
+      // Public/unauthenticated route (crawlers) - '' as requestingUserId
+      // never matches a real creatorId, so a draft's share link falls
+      // through to the same plain redirect as a nonexistent event below,
+      // rather than needing a special case to keep it unlisted.
+      event = await this.eventService.getEventById(id, '');
     } catch {
       res.redirect(targetUrl);
       return;
     }
 
     const title = escapeHtml(event.title);
-    const description = escapeHtml(event.description).slice(0, 200);
+    const description = escapeHtml(event.description ?? '').slice(0, 200);
     const url = escapeHtml(targetUrl);
     const base = selfBaseUrl(req);
     const image = escapeHtml(`${base}/share/events/${id}/image`);
@@ -131,8 +135,12 @@ ${redirectTag}
   async shareEventImage(@Param('id') id: string, @Res() res: Response): Promise<void> {
     let event: EventDto;
     try {
-      event = await this.eventService.getEventById(id);
+      event = await this.eventService.getEventById(id, '');
     } catch {
+      res.status(404).end();
+      return;
+    }
+    if (!event.imageUrl) {
       res.status(404).end();
       return;
     }

@@ -3,14 +3,17 @@ import { ISocialLinks } from '../../common';
 
 export interface EventDocument extends Document {
   title: string;
-  description: string;
+  // Optional because a draft (status: 'draft') can be saved with just a
+  // title - these are only guaranteed to be set once status is 'published'
+  // (enforced by CreateEventDto/EventService.updateEvent, not the schema).
+  description?: string;
   additionalInfo?: string;
   socialLinks?: ISocialLinks;
-  imageUrl: string;
-  typeIds: string[];
-  disciplineIds: string[];
-  eventDateFrom: number;
-  eventDateTo: number;
+  imageUrl?: string;
+  typeIds?: string[];
+  disciplineIds?: string[];
+  eventDateFrom?: number;
+  eventDateTo?: number;
   status: string;
   isFree: boolean;
   price: number;
@@ -27,10 +30,10 @@ export interface EventDocument extends Document {
    * creation. */
   joinMode: 'open' | 'approval';
   creatorId: string;
-  address: string;
-  city: string;
-  latitude: number;
-  longitude: number;
+  address?: string;
+  city?: string;
+  latitude?: number;
+  longitude?: number;
   location?: { type: string; coordinates: number[] };
   seriesId?: string;
   seriesIndex?: number;
@@ -55,27 +58,31 @@ const SocialLinksSchema = new Schema<ISocialLinks>(
 export const EventSchema = new Schema<EventDocument>(
   {
     title: { type: String, required: true, trim: true },
-    description: { type: String, required: true, trim: true },
+    // description/imageUrl/typeIds/disciplineIds/eventDateFrom/eventDateTo/
+    // address/city/latitude/longitude are only enforced at the DTO level
+    // (ValidateIf status !== 'draft') - not required here, since a draft can
+    // be saved with just a title and completed later.
+    description: { type: String, trim: true },
     additionalInfo: { type: String, trim: true },
     socialLinks: { type: SocialLinksSchema },
-    imageUrl: { type: String, required: true, trim: true },
+    imageUrl: { type: String, trim: true },
     // An event can be more than one type (e.g. workshop then jam) and more
     // than one dance style (e.g. Swing and Rock&Roll), so both are arrays -
     // at least one of each is enforced at the DTO level (ArrayMinSize(1)).
-    typeIds: { type: [String], required: true },
-    disciplineIds: { type: [String], required: true },
-    eventDateFrom: { type: Number, required: true },
-    eventDateTo: { type: Number, required: true },
+    typeIds: { type: [String] },
+    disciplineIds: { type: [String] },
+    eventDateFrom: { type: Number },
+    eventDateTo: { type: Number },
     status: { type: String, required: true },
     isFree: { type: Boolean, required: true, default: false },
     price: { type: Number, required: true, default: 0 },
     allowAttendeePhotos: { type: Boolean, required: true, default: true },
     joinMode: { type: String, required: true, default: 'open' },
     creatorId: { type: String, required: true },
-    address: { type: String, required: true, trim: true },
-    city: { type: String, required: true, trim: true },
-    latitude: { type: Number, required: true },
-    longitude: { type: Number, required: true },
+    address: { type: String, trim: true },
+    city: { type: String, trim: true },
+    latitude: { type: Number },
+    longitude: { type: Number },
     location: {
       type: { type: String, enum: ['Point'], default: 'Point' },
       coordinates: { type: [Number], default: [0, 0] },
