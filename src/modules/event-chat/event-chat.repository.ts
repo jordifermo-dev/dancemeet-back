@@ -92,6 +92,33 @@ export class EventChatRepository {
     });
   }
 
+  /** Batched "most recent message per event" - one $in query sorted
+   * {eventId:1, createdAt:-1} (reuses this collection's own index), reduced
+   * in memory keeping only the first (= most recent, thanks to the sort)
+   * document seen per eventId - same batch-reduce shape as
+   * countUnreadManyByEvents above, never `.aggregate()`. Used by
+   * AttendanceService.getAttendedEventsDetailed to order the Chats tab by
+   * recency; an event with no messages yet simply has no entry in the map. */
+  async findLatestMessageByEvents(eventIds: string[]): Promise<Map<string, { createdAt: number; senderId: string; text: string }>> {
+    return handleDbOperation(this.resourceName, 'findLatestMessageByEvents', async () => {
+      const latestByEventId = new Map<string, { createdAt: number; senderId: string; text: string }>();
+      if (!eventIds.length) {
+        return latestByEventId;
+      }
+      const documents = await this.eventMessageModel
+        .find({ eventId: { $in: eventIds }, deletedAt: { $exists: false } })
+        .sort({ eventId: 1, createdAt: -1 })
+        .select('eventId createdAt senderId text')
+        .lean();
+      for (const document of documents) {
+        if (!latestByEventId.has(document.eventId)) {
+          latestByEventId.set(document.eventId, { createdAt: document.createdAt, senderId: document.senderId, text: document.text });
+        }
+      }
+      return latestByEventId;
+    });
+  }
+
   async countUnread(eventId: string, since: number, excludeUserId: string): Promise<number> {
     return handleDbOperation(this.resourceName, 'countUnread', async () => {
       return this.eventMessageModel.countDocuments({

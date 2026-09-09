@@ -47,6 +47,20 @@ export class FollowersService {
     return await this.followersRepository.findByFollower(followerId);
   }
 
+  /** Whether any Follow relationship exists between these two users, in
+   * either direction - the gate behind the Instagram/Messenger-style message
+   * request model (see ConversationService.getOrCreateConversation): a DM
+   * between two people with no connection at all lands in "Solicitudes"
+   * until accepted, one where either already follows the other goes straight
+   * to the inbox. */
+  async hasAnyRelationship(userIdA: string, userIdB: string): Promise<boolean> {
+    const [aFollowsB, bFollowsA] = await Promise.all([
+      this.followersRepository.findByUserAndFollower(userIdB, userIdA),
+      this.followersRepository.findByUserAndFollower(userIdA, userIdB),
+    ]);
+    return !!aFollowsB || !!bFollowsA;
+  }
+
 
   /**
    * Add a follower (user A follows user B)

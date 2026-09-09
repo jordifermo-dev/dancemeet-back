@@ -10,6 +10,10 @@ import { NotificationService } from '../notification/notification.service';
 import { UserService } from '../user/user.service';
 import { EventService } from '../event/event.service';
 import { EventManagerService } from '../event-manager/event-manager.service';
+import { ReviewService } from '../review/review.service';
+import { EventChatService } from '../event-chat/event-chat.service';
+import { GalleryService } from '../gallery/gallery.service';
+import { FavoriteService } from '../favorite/favorite.service';
 
 export class AttendanceService {
   constructor(
@@ -31,6 +35,23 @@ export class AttendanceService {
    * (EventManagerService.respondToInvite calls ensureAttendingMany below). */
   private get eventManagerService(): EventManagerService {
     return this.moduleRef.get(EventManagerService, { strict: false });
+  }
+
+  /** Same reasoning as eventService above - circular with ReviewModule. */
+  private get reviewService(): ReviewService {
+    return this.moduleRef.get(ReviewService, { strict: false });
+  }
+
+  private get eventChatService(): EventChatService {
+    return this.moduleRef.get(EventChatService, { strict: false });
+  }
+
+  private get galleryService(): GalleryService {
+    return this.moduleRef.get(GalleryService, { strict: false });
+  }
+
+  private get favoriteService(): FavoriteService {
+    return this.moduleRef.get(FavoriteService, { strict: false });
   }
 
   async createAttendance(
@@ -68,15 +89,47 @@ export class AttendanceService {
     const events = await this.eventService.findByIds(allEventIds);
     const creators = await this.userService.findByIds([...new Set(events.map((e) => e.creatorId))]);
     const creatorNameById = new Map(creators.map((creator) => [creator.id, creator.name]));
+    const eventIds = events.map((event) => event.id!);
+    const [
+      attendeesCountByEventId,
+      likesCountByEventId,
+      ratingByEventId,
+      unreadChatByEventId,
+      unreadGalleryByEventId,
+      unreadPrivateGalleryByEventId,
+      latestMessageByEventId,
+    ] = await Promise.all([
+      this.countAttendanceByEvents(eventIds),
+      this.favoriteService.countFavoritesByEvents(eventIds),
+      this.reviewService.getRatingsByEventIds(eventIds),
+      // Same batched-badge pattern FavoriteService.getFavoritedEventsDetailed
+      // already uses - every event here genuinely has an Attendance row, so
+      // none of these three ever come back empty the way they legitimately
+      // can for a merely-favorited event there.
+      this.eventChatService.getUnreadCountsByEvents(eventIds, userId),
+      this.galleryService.getUnreadCountsByEvents(eventIds, userId, 'public'),
+      this.galleryService.getUnreadCountsByEvents(eventIds, userId, 'private'),
+      this.eventChatService.getLatestMessagesByEvents(eventIds),
+    ]);
 
     return events
       .map((event) => {
         const isCreator = createdEventIds.has(event.id!) || managedEventIds.has(event.id!);
         const relation: 'creator' | 'attendee' = isCreator ? 'creator' : 'attendee';
+        const rating = ratingByEventId.get(event.id!);
         return {
           ...event,
           creatorName: creatorNameById.get(event.creatorId) ?? '',
           relation,
+          attendeesCount: attendeesCountByEventId.get(event.id!) ?? 0,
+          likesCount: likesCountByEventId.get(event.id!) ?? 0,
+          reviewsCount: rating?.count ?? 0,
+          averageRating: rating?.averageRating ?? 0,
+          isAttending: true,
+          unreadChatCount: unreadChatByEventId.get(event.id!),
+          unreadGalleryCount: unreadGalleryByEventId.get(event.id!),
+          unreadPrivateGalleryCount: unreadPrivateGalleryByEventId.get(event.id!),
+          lastChatActivityAt: latestMessageByEventId.get(event.id!)?.createdAt,
         };
       })
       // A draft has no eventDateFrom yet - surfaced first (unfinished, so

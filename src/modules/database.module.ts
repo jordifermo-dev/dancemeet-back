@@ -13,6 +13,8 @@ import {
   ATTENDANCE_MODEL,
   EVENT_CHAT_MODEL,
   REVIEW_MODEL,
+  CONVERSATION_MODEL,
+  DIRECT_MESSAGE_MODEL,
 } from '../config/mongoose.config';
 import { DisciplineModel } from './discipline/discipline.schema';
 import { EventTypeModel } from './event-type/event-type.schema';
@@ -26,6 +28,8 @@ import { GalleryPhotoModel } from './gallery/gallery.schema';
 import { AttendanceModel } from './attendance/attendance.schema';
 import { EventMessageModel } from './event-chat/event-chat.schema';
 import { ReviewModel } from './review/review.schema';
+import { ConversationModel } from './direct-message/conversation.schema';
+import { DirectMessageModel } from './direct-message/direct-message.schema';
 import { HealthModule } from '../health/health.module';
 
 @Global()
@@ -86,6 +90,14 @@ import { HealthModule } from '../health/health.module';
       provide: REVIEW_MODEL,
       useFactory: () => ReviewModel,
     },
+    {
+      provide: CONVERSATION_MODEL,
+      useFactory: () => ConversationModel,
+    },
+    {
+      provide: DIRECT_MESSAGE_MODEL,
+      useFactory: () => DirectMessageModel,
+    },
   ],
   exports: [
     'DATABASE',
@@ -101,6 +113,8 @@ import { HealthModule } from '../health/health.module';
     ATTENDANCE_MODEL,
     EVENT_CHAT_MODEL,
     REVIEW_MODEL,
+    CONVERSATION_MODEL,
+    DIRECT_MESSAGE_MODEL,
   ],
   imports: [HealthModule],
 })

@@ -25,6 +25,8 @@
   "galleryPhotoProfileBody": "{{name}} ha compartido una foto nueva en su perfil",
   "eventChatMessageTitle": "Nuevo mensaje en {{eventTitle}}",
   "eventChatMessageBody": "{{name}}: {{message}}",
+  "directMessageTitle": "Nuevo mensaje de {{name}}",
+  "directMessageBody": "{{message}}",
   "eventReviewCreatedTitle": "Nueva reseña",
   "eventReviewCreatedBody": "{{name}} ha valorado \"{{eventTitle}}\" con {{rating}} estrellas",
   "eventReviewRepliedTitle": "Respuesta a tu reseña",

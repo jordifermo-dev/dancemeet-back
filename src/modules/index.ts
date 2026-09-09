@@ -14,3 +14,4 @@ export { GalleryModule } from './gallery/gallery.module';
 export { AttendanceModule } from './attendance/attendance.module';
 export { EventChatModule } from './event-chat/event-chat.module';
 export { ReviewModule } from './review/review.module';
+export { DirectMessageModule } from './direct-message/direct-message.module';

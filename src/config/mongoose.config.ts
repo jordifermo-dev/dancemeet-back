@@ -20,6 +20,7 @@ import { GalleryPhotoDto } from '../modules/gallery/gallery.dto';
 import { AttendanceDto } from '../modules/attendance/attendance.dto';
 import { EventMessageDto } from '../modules/event-chat/event-chat.dto';
 import { ReviewDto } from '../modules/review/review.dto';
+import { ConversationDto, DirectMessageDto } from '../modules/direct-message/direct-message.dto';
 
 export const DISCIPLINE_MODEL = 'DISCIPLINE_MODEL';
 export const EVENT_TYPE_MODEL = 'EVENT_TYPE_MODEL';
@@ -33,6 +34,8 @@ export const GALLERY_MODEL = 'GALLERY_MODEL';
 export const ATTENDANCE_MODEL = 'ATTENDANCE_MODEL';
 export const EVENT_CHAT_MODEL = 'EVENT_CHAT_MODEL';
 export const REVIEW_MODEL = 'REVIEW_MODEL';
+export const CONVERSATION_MODEL = 'CONVERSATION_MODEL';
+export const DIRECT_MESSAGE_MODEL = 'DIRECT_MESSAGE_MODEL';
 
 export async function connectMongoose(): Promise<typeof mongoose> {
   const uri = process.env.MONGODB_URI;
@@ -158,6 +161,33 @@ export function mapEventMessageToDto(document: any): EventMessageDto {
     replyToMessageId: document.replyToMessageId,
     attachedPhotoId: document.attachedPhotoId,
     attachedPhotoUrl: document.attachedPhotoUrl,
+  };
+}
+
+export function mapConversationToDto(document: any): ConversationDto {
+  const lastReadAt = document.lastReadAt instanceof Map ? Object.fromEntries(document.lastReadAt) : document.lastReadAt ?? {};
+  return {
+    id: document._id?.toString(),
+    participantIds: document.participantIds,
+    status: document.status,
+    requestedBy: document.requestedBy,
+    createdAt: document.createdAt,
+    lastMessageAt: document.lastMessageAt,
+    lastReadAt,
+  };
+}
+
+export function mapDirectMessageToDto(document: any): DirectMessageDto {
+  return {
+    id: document._id?.toString(),
+    conversationId: document.conversationId,
+    senderId: document.senderId,
+    text: document.text,
+    reactions: (document.reactions ?? []).map((reaction: any) => ({ emoji: reaction.emoji, userId: reaction.userId })),
+    createdAt: document.createdAt,
+    editedAt: document.editedAt,
+    deletedAt: document.deletedAt,
+    replyToMessageId: document.replyToMessageId,
   };
 }
 

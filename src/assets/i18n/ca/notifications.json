@@ -25,6 +25,8 @@
   "galleryPhotoProfileBody": "{{name}} ha compartit una foto nova al seu perfil",
   "eventChatMessageTitle": "Nou missatge a {{eventTitle}}",
   "eventChatMessageBody": "{{name}}: {{message}}",
+  "directMessageTitle": "Nou missatge de {{name}}",
+  "directMessageBody": "{{message}}",
   "eventReviewCreatedTitle": "Nova ressenya",
   "eventReviewCreatedBody": "{{name}} ha valorat \"{{eventTitle}}\" amb {{rating}} estrelles",
   "eventReviewRepliedTitle": "Resposta a la teva ressenya",

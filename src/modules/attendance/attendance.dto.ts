@@ -20,10 +20,32 @@ export class AttendanceDto {
 
 /** An event a user is genuinely attending, hydrated with just enough
  * creator info to render the "Mis eventos" list (avatar/name) without a
- * second round-trip per card. */
+ * second round-trip per card. Also the source of the Chats tab's "events
+ * with private-chat access" rows - unlike FavoritedEventDto (favorited ∪
+ * created), this union (attended ∪ created) matches EventService.
+ * assertCanAccessPrivateArea exactly, so every event returned here genuinely
+ * has a private xat the viewer can open. */
 export class AttendedEventDto extends EventDto {
   creatorName!: string;
   relation!: 'creator' | 'attendee';
+  attendeesCount!: number;
+  likesCount!: number;
+  reviewsCount!: number;
+  averageRating!: number;
+  /** Always true - every event in this list is, by definition, one the
+   * viewer genuinely attends (see this DTO's own doc comment). */
+  isAttending!: boolean;
+  /** Unread-message/new-photo card badges - same shape as FavoritedEventDto's
+   * own (see its doc comment): always present here, since every event in
+   * this list already has genuine attendance. */
+  unreadChatCount?: number;
+  unreadGalleryCount?: number;
+  unreadPrivateGalleryCount?: number;
+  /** Timestamp of the most recent (non-deleted) message in this event's
+   * private xat, or undefined if it has none yet - drives the Chats tab's
+   * recency ordering (see AttendanceService.getAttendedEventsDetailed). Not
+   * used anywhere else (Mis Events ignores it). */
+  lastChatActivityAt?: number;
 }
 
 /** One row of an event's real attendee list - same shape as FollowUserDto

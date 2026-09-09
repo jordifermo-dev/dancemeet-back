@@ -69,6 +69,8 @@
   "DATABASE_ERROR": "Error de base de dades durant {operation}: {detail}",
   "UNAUTHENTICATED": "Cal iniciar sessió per continuar.",
   "BUSINESS_CANNOT_FOLLOW_SELF": "Un usuari no es pot seguir a si mateix",
+  "BUSINESS_CANNOT_MESSAGE_SELF": "Un usuari no pot iniciar una conversa amb si mateix",
+  "BUSINESS_CANNOT_ACCEPT_OWN_REQUEST": "Qui envia la sol·licitud de missatge no la pot acceptar",
   "BUSINESS_ALREADY_FOLLOWING": "L'usuari \"{followerId}\" ja segueix l'usuari \"{userId}\"",
   "BUSINESS_ALREADY_FAVORITED": "L'esdeveniment \"{eventId}\" ja és als preferits de l'usuari \"{userId}\"",
   "BUSINESS_ALREADY_ATTENDING": "L'usuari \"{userId}\" ja consta com a assistent de l'esdeveniment \"{eventId}\"",

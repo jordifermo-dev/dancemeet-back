@@ -23,6 +23,7 @@ import {
   AttendanceModule,
   EventChatModule,
   ReviewModule,
+  DirectMessageModule,
 } from './modules';
 import { HealthModule } from './health/health.module';
 
@@ -53,6 +54,7 @@ import { HealthModule } from './health/health.module';
     AttendanceModule,
     EventChatModule,
     ReviewModule,
+    DirectMessageModule,
     HealthModule,
   ],
   controllers: [AppController],
