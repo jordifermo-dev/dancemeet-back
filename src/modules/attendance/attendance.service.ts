@@ -109,7 +109,7 @@ export class AttendanceService {
       this.eventChatService.getUnreadCountsByEvents(eventIds, userId),
       this.galleryService.getUnreadCountsByEvents(eventIds, userId, 'public'),
       this.galleryService.getUnreadCountsByEvents(eventIds, userId, 'private'),
-      this.eventChatService.getLatestMessagesByEvents(eventIds),
+      this.eventChatService.getLatestVisibleMessagesByEvents(this.buildChatVisibleFromByEventId(attendances, eventIds)),
     ]);
 
     return events
@@ -137,6 +137,22 @@ export class AttendanceService {
       .sort((a, b) => (b.eventDateFrom ?? Infinity) - (a.eventDateFrom ?? Infinity));
   }
 
+  /** Same threshold EventChatService.resolveVisibleFrom uses per-request for
+   * a single event's message list, batched here for getLatestVisibleMessagesByEvents
+   * - every event this method returns a row for is either backed by a real
+   * Attendance row (covers attendee/manager, and the creator too via
+   * createEvent()'s own auto-attend) or, defensively, falls back to 0 (full
+   * history) for the rare case one somehow isn't. */
+  private buildChatVisibleFromByEventId(attendances: AttendanceDto[], eventIds: string[]): Map<string, number> {
+    const visibleFromByEventId = new Map(attendances.map((a) => [a.eventId, a.chatVisibleFrom ?? a.createdAt]));
+    for (const eventId of eventIds) {
+      if (!visibleFromByEventId.has(eventId)) {
+        visibleFromByEventId.set(eventId, 0);
+      }
+    }
+    return visibleFromByEventId;
+  }
+
   /**
    * Get everyone genuinely attending an event, hydrated with just enough
    * profile info to render an attendee list - same hydration pattern as
@@ -144,6 +160,16 @@ export class AttendanceService {
    * attendee list (event-detail, gallery_photo_attending fan-out) - a plain
    * Favorite (like) no longer counts.
    */
+  /** Just the userIds, no profile hydration - used by EventChatGateway to
+   * know who to notify of new chat activity while they're not sitting in
+   * this event's room (see that gateway's send-message handler). Covers the
+   * creator too via createEvent()'s own auto-attend, same as
+   * getEventAttendeesDetailed above. */
+  async getAttendeeUserIds(eventId: string): Promise<string[]> {
+    const attendances = await this.attendanceRepository.findByEvent(eventId);
+    return attendances.map((a) => a.userId);
+  }
+
   async getEventAttendeesDetailed(eventId: string): Promise<EventAttendeeDto[]> {
     const attendances = await this.attendanceRepository.findByEvent(eventId);
     const users = await this.userService.findByIds(attendances.map((a) => a.userId));

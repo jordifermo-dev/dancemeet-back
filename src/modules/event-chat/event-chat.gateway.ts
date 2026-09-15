@@ -1,6 +1,7 @@
 import {
   ConnectedSocket,
   MessageBody,
+  OnGatewayConnection,
   OnGatewayDisconnect,
   OnGatewayInit,
   SubscribeMessage,
@@ -14,6 +15,7 @@ import { UserService } from '../user/user.service';
 import { UserDto } from '../user/user.dto';
 import { EventService } from '../event/event.service';
 import { EventChatService } from './event-chat.service';
+import { AttendanceService } from '../attendance/attendance.service';
 
 interface AuthedSocketData {
   user?: UserDto;
@@ -46,7 +48,7 @@ interface AuthedSocketData {
     credentials: true,
   },
 })
-export class EventChatGateway implements OnGatewayInit, OnGatewayDisconnect {
+export class EventChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   private readonly server!: Server;
 
@@ -54,12 +56,25 @@ export class EventChatGateway implements OnGatewayInit, OnGatewayDisconnect {
     private readonly userService: UserService,
     private readonly eventService: EventService,
     private readonly eventChatService: EventChatService,
+    private readonly attendanceService: AttendanceService,
   ) {}
 
   afterInit(server: Server): void {
     server.use((socket: Socket, next: (err?: Error) => void) => {
       void this.authenticate(socket, next);
     });
+  }
+
+  /** Runs after the handshake middleware above has already set
+   * client.data.user (or refused the connection) - joins this user's own
+   * personal room so the Chats tab's ambient socket (frontend
+   * ChatActivitySocketService) can be told about new activity anywhere,
+   * without needing to have joined that specific event's room first. */
+  handleConnection(client: Socket): void {
+    const user = (client.data as AuthedSocketData).user;
+    if (user?.id) {
+      void client.join(this.userRoomFor(user.id));
+    }
   }
 
   private async authenticate(socket: Socket, next: (err?: Error) => void): Promise<void> {
@@ -130,6 +145,7 @@ export class EventChatGateway implements OnGatewayInit, OnGatewayDisconnect {
       // renders optimistically, it always waits for this echo (see
       // event-chat-socket.service.ts's own doc comment).
       this.server.to(this.roomFor(body.eventId)).emit('new-message', message);
+      await this.notifyAttendeesOfActivity(body.eventId);
     } catch {
       client.emit('send-message-error', { eventId: body.eventId });
     }
@@ -245,5 +261,23 @@ export class EventChatGateway implements OnGatewayInit, OnGatewayDisconnect {
 
   private roomFor(eventId: string): string {
     return `event:${eventId}`;
+  }
+
+  private userRoomFor(userId: string): string {
+    return `user:${userId}`;
+  }
+
+  /** Separate from the roomFor(eventId) broadcast above: that one only
+   * reaches sockets that have actively join-event'd this event's chat
+   * screen, so it alone doesn't reach an attendee sitting on the Chats tab
+   * (or any other screen). 'chat-activity' carries no payload beyond the
+   * eventId - the frontend just uses it as a "go refetch the Chats list"
+   * signal, same as event-chat.service.ts's threshold-aware fetch already
+   * does when asked. */
+  private async notifyAttendeesOfActivity(eventId: string): Promise<void> {
+    const attendeeIds = await this.attendanceService.getAttendeeUserIds(eventId);
+    if (attendeeIds.length) {
+      this.server.to(attendeeIds.map((id) => this.userRoomFor(id))).emit('chat-activity', { eventId });
+    }
   }
 }

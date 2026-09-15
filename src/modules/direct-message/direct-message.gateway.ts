@@ -1,6 +1,7 @@
 import {
   ConnectedSocket,
   MessageBody,
+  OnGatewayConnection,
   OnGatewayDisconnect,
   OnGatewayInit,
   SubscribeMessage,
@@ -31,7 +32,7 @@ interface AuthedSocketData {
     credentials: true,
   },
 })
-export class DirectMessageGateway implements OnGatewayInit, OnGatewayDisconnect {
+export class DirectMessageGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   private readonly server!: Server;
 
@@ -44,6 +45,15 @@ export class DirectMessageGateway implements OnGatewayInit, OnGatewayDisconnect 
     server.use((socket: Socket, next: (err?: Error) => void) => {
       void this.authenticate(socket, next);
     });
+  }
+
+  /** Same role as EventChatGateway.handleConnection - see that class's own
+   * doc comment. */
+  handleConnection(client: Socket): void {
+    const user = (client.data as AuthedSocketData).user;
+    if (user?.id) {
+      void client.join(this.userRoomFor(user.id));
+    }
   }
 
   private async authenticate(socket: Socket, next: (err?: Error) => void): Promise<void> {
@@ -101,6 +111,7 @@ export class DirectMessageGateway implements OnGatewayInit, OnGatewayDisconnect 
       // Broadcast to the whole room, sender included - same "never render
       // optimistically, always wait for this echo" reasoning as event-chat.
       this.server.to(this.roomFor(body.conversationId)).emit('new-message', message);
+      await this.notifyParticipantsOfActivity(body.conversationId);
     } catch {
       client.emit('send-message-error', { conversationId: body.conversationId });
     }
@@ -208,5 +219,18 @@ export class DirectMessageGateway implements OnGatewayInit, OnGatewayDisconnect 
 
   private roomFor(conversationId: string): string {
     return `dm:${conversationId}`;
+  }
+
+  private userRoomFor(userId: string): string {
+    return `user:${userId}`;
+  }
+
+  /** Same role as EventChatGateway.notifyAttendeesOfActivity - see that
+   * method's own doc comment. */
+  private async notifyParticipantsOfActivity(conversationId: string): Promise<void> {
+    const participantIds = await this.conversationService.getParticipantIds(conversationId);
+    if (participantIds.length) {
+      this.server.to(participantIds.map((id) => this.userRoomFor(id))).emit('chat-activity', { conversationId });
+    }
   }
 }

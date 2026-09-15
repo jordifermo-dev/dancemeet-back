@@ -92,16 +92,28 @@ export class EventChatRepository {
     });
   }
 
-  /** Batched "most recent message per event" - one $in query sorted
-   * {eventId:1, createdAt:-1} (reuses this collection's own index), reduced
-   * in memory keeping only the first (= most recent, thanks to the sort)
-   * document seen per eventId - same batch-reduce shape as
-   * countUnreadManyByEvents above, never `.aggregate()`. Used by
-   * AttendanceService.getAttendedEventsDetailed to order the Chats tab by
-   * recency; an event with no messages yet simply has no entry in the map. */
-  async findLatestMessageByEvents(eventIds: string[]): Promise<Map<string, { createdAt: number; senderId: string; text: string }>> {
-    return handleDbOperation(this.resourceName, 'findLatestMessageByEvents', async () => {
+  /** Batched "most recent message *this viewer can see* per event" - one
+   * $in query sorted {eventId:1, createdAt:-1} (reuses this collection's own
+   * index), reduced in memory keeping the first (= most recent, thanks to
+   * the sort) document seen per eventId that's also at/after that event's
+   * own visibility threshold - same batch-reduce shape as
+   * countUnreadManyByEvents above, never `.aggregate()`.
+   *
+   * Thresholded per event (not a flat "any message, any time") on purpose:
+   * a group xat's oldest messages can predate a given attendee's own
+   * chatVisibleFrom cutoff (see AttendanceDocument's own doc comment - a
+   * 'fromJoin' invite only grants visibility from when they joined, not the
+   * event's full history). Without this, an event where every message
+   * predates this viewer's join would still show up in the Chats tab (it
+   * technically "has activity"), but opening it would show "Aún no hay
+   * mensajes" - confusing, since from this viewer's own point of view it
+   * really doesn't have any messages yet. Used by AttendanceService.
+   * getAttendedEventsDetailed both to order the Chats tab by recency and to
+   * decide which events belong there at all. */
+  async findLatestVisibleMessageByEvents(visibleFromByEventId: Map<string, number>): Promise<Map<string, { createdAt: number; senderId: string; text: string }>> {
+    return handleDbOperation(this.resourceName, 'findLatestVisibleMessageByEvents', async () => {
       const latestByEventId = new Map<string, { createdAt: number; senderId: string; text: string }>();
+      const eventIds = [...visibleFromByEventId.keys()];
       if (!eventIds.length) {
         return latestByEventId;
       }
@@ -111,7 +123,11 @@ export class EventChatRepository {
         .select('eventId createdAt senderId text')
         .lean();
       for (const document of documents) {
-        if (!latestByEventId.has(document.eventId)) {
+        if (latestByEventId.has(document.eventId)) {
+          continue;
+        }
+        const threshold = visibleFromByEventId.get(document.eventId) ?? 0;
+        if (document.createdAt >= threshold) {
           latestByEventId.set(document.eventId, { createdAt: document.createdAt, senderId: document.senderId, text: document.text });
         }
       }

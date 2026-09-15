@@ -165,12 +165,15 @@ export class EventChatService {
     return this.repository.countUnreadManyByEvents(thresholdByEventId, userId);
   }
 
-  /** Batched "most recent message per event" - no assertCanAccessPrivateArea
-   * per event, same reasoning as getUnreadCountsByEvents above (this is only
-   * ever called with an eventIds list the caller already scoped to events
-   * the viewer can access). Used to order the Chats tab by recency. */
-  async getLatestMessagesByEvents(eventIds: string[]): Promise<Map<string, { createdAt: number; senderId: string; text: string }>> {
-    return this.repository.findLatestMessageByEvents(eventIds);
+  /** Batched "most recent message *this viewer can see* per event" - no
+   * assertCanAccessPrivateArea per event, same reasoning as
+   * getUnreadCountsByEvents above (this is only ever called with a
+   * visibility-threshold map the caller already scoped to events/attendances
+   * the viewer genuinely has). Used to both order and populate the Chats
+   * tab - see EventChatRepository.findLatestVisibleMessageByEvents's own doc
+   * comment on why this is thresholded per event, not a flat lookup. */
+  async getLatestVisibleMessagesByEvents(visibleFromByEventId: Map<string, number>): Promise<Map<string, { createdAt: number; senderId: string; text: string }>> {
+    return this.repository.findLatestVisibleMessageByEvents(visibleFromByEventId);
   }
 
   async reactToMessage(eventId: string, messageId: string, userId: string, emoji: string): Promise<GroupedReactionDto[]> {

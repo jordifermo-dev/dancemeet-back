@@ -47,6 +47,16 @@ export class ConversationService {
     this.assertParticipant(conversation.participantIds, userId);
   }
 
+  /** Used by DirectMessageGateway's send-message handler to know who to
+   * notify of new chat activity while they're not sitting in this
+   * conversation's room (same role as AttendanceService.getAttendeeUserIds
+   * for event chats) - no access check, callers already hold a conversation
+   * they just wrote a message into. */
+  async getParticipantIds(conversationId: string): Promise<string[]> {
+    const conversation = await this.conversationRepository.findById(conversationId);
+    return conversation?.participantIds ?? [];
+  }
+
   /** The single entry point for "start (or resume) a DM with this person" -
    * POST /api/conversations. Reuses the existing pair if one already exists
    * (in either direction/state) instead of ever creating a second one - see

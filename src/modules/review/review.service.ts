@@ -20,20 +20,29 @@ export class ReviewService {
   /**
    * Creates a new review, or updates the author's existing one for this
    * event (see ReviewRepository - at most one per {authorUserId, eventId}).
-   * Only a real attendee of a *finished* event can review it, and never the
-   * event's own creator or an accepted co-organizer (manager) - reviewing an
-   * event you help run would let you inflate your own (or a fellow
-   * organizer's) aggregate rating - see getOrganizerRating.
+   * Only a real attendee can review, and only once the event has actually
+   * started - `finished` always qualifies, and a still-`published` event
+   * does too once its own eventDateFrom has passed. Waiting for `finished`
+   * outright would be wrong for a months-long course (attendees would have
+   * to wait until the whole course ends to review a single session) just as
+   * much as it's wrong for a one-night jam (by the time the `finishPastEvents`
+   * cron flips it, everyone's gone home and forgotten to write anything) -
+   * "attended and it's underway" is what actually earns the right to review,
+   * not "administratively closed". Never the event's own creator or an
+   * accepted co-organizer (manager) either way - reviewing an event you help
+   * run would let you inflate your own (or a fellow organizer's) aggregate
+   * rating - see getOrganizerRating.
    */
   async createOrUpdateReview(eventId: string, authorUserId: string, dto: CreateReviewDto): Promise<ReviewDto> {
     const event = await this.eventService.findById(eventId);
     if (!event) {
       throw new ResourceNotFoundException('Event', eventId);
     }
-    if (event.status !== 'finished') {
+    const hasStarted = event.status === 'finished' || (event.status === 'published' && (event.eventDateFrom ?? Infinity) <= Date.now());
+    if (!hasStarted) {
       throw new ForbiddenActionException(
-        `Event "${eventId}" has not finished yet, cannot be reviewed`,
-        'errors.FORBIDDEN_REVIEW_NOT_FINISHED',
+        `Event "${eventId}" has not started yet, cannot be reviewed`,
+        'errors.FORBIDDEN_REVIEW_NOT_STARTED',
       );
     }
     const isManaging =
