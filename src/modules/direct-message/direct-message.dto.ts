@@ -25,7 +25,7 @@ export class DirectMessageQuoteDto {
   id!: string;
   senderName!: string;
   text!: string;
-  deleted!: boolean;
+  isDeleted!: boolean;
 }
 
 /** Hydrated for the conversation's own message list - GroupedReactionDto is
@@ -41,7 +41,7 @@ export class DirectMessageWithSenderDto {
   reactions!: GroupedReactionDto[];
   createdAt!: number;
   editedAt?: number;
-  deleted!: boolean;
+  isDeleted!: boolean;
   replyTo?: DirectMessageQuoteDto | null;
 }
 

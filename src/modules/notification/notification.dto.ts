@@ -7,6 +7,6 @@ export class NotificationDto {
   title!: string;
   body!: string;
   data?: Record<string, string>;
-  read!: boolean;
+  isRead!: boolean;
   createdAt!: number;
 }

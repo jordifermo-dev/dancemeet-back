@@ -47,7 +47,7 @@ export interface NotificationDocument extends Document {
   title: string;
   body: string;
   data?: Record<string, string>;
-  read: boolean;
+  isRead: boolean;
   createdAt: number;
 }
 
@@ -58,7 +58,7 @@ export const NotificationSchema = new Schema<NotificationDocument>(
     title: { type: String, required: true, trim: true },
     body: { type: String, required: true, trim: true },
     data: { type: Schema.Types.Mixed },
-    read: { type: Boolean, required: true, default: false },
+    isRead: { type: Boolean, required: true, default: false },
     createdAt: { type: Number, default: () => Date.now() },
   },
   {

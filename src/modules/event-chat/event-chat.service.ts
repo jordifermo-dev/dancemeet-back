@@ -111,7 +111,7 @@ export class EventChatService {
     return hydrated;
   }
 
-  /** Soft delete - text is blanked and `deleted:true` surfaced to every
+  /** Soft delete - text is blanked and `isDeleted:true` surfaced to every
    * reader from here on (see hydrate), the row itself is kept so any reply
    * quoting it still has something to show. */
   async deleteMessage(eventId: string, messageId: string, userId: string): Promise<EventMessageWithSenderDto> {
@@ -226,7 +226,7 @@ export class EventChatService {
               id: replyTarget.id!,
               senderName: replyTargetSenderById.get(replyTarget.senderId)?.name ?? '',
               text: replyTarget.deletedAt ? '' : replyTarget.text,
-              deleted: !!replyTarget.deletedAt,
+              isDeleted: !!replyTarget.deletedAt,
             }
           : null;
         const attachedPhoto =
@@ -243,7 +243,7 @@ export class EventChatService {
           reactions: deleted ? [] : this.groupReactions(message.reactions, requestingUserId),
           createdAt: message.createdAt,
           editedAt: message.editedAt,
-          deleted,
+          isDeleted: deleted,
           replyTo,
           attachedPhoto,
         };

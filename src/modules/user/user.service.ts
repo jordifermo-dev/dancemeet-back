@@ -89,10 +89,10 @@ export class UserService {
     }
 
     const followers = await this.followersService.findByUser(userId);
-    user.followedId = followers.map((f) => f.followerId);
+    user.followedIds = followers.map((f) => f.followerId);
 
     const following = await this.followersService.findByFollower(userId);
-    user.followingId = following.map((f) => f.userId);
+    user.followingIds = following.map((f) => f.userId);
 
     return user;
   }
@@ -127,10 +127,10 @@ export class UserService {
     }
 
     const followers = await this.followersService.findByUser(user.id!);
-    user.followedId = followers.map((f) => f.followerId);
+    user.followedIds = followers.map((f) => f.followerId);
 
     const following = await this.followersService.findByFollower(user.id!);
-    user.followingId = following.map((f) => f.userId);
+    user.followingIds = following.map((f) => f.userId);
 
     return user;
   }

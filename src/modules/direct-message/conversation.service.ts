@@ -315,7 +315,7 @@ export class ConversationService {
               id: replyTarget.id!,
               senderName: replyTargetSenderById.get(replyTarget.senderId)?.name ?? '',
               text: replyTarget.deletedAt ? '' : replyTarget.text,
-              deleted: !!replyTarget.deletedAt,
+              isDeleted: !!replyTarget.deletedAt,
             }
           : null;
         return {
@@ -328,7 +328,7 @@ export class ConversationService {
           reactions: deleted ? [] : this.groupReactions(message.reactions, requestingUserId),
           createdAt: message.createdAt,
           editedAt: message.editedAt,
-          deleted,
+          isDeleted: deleted,
           replyTo,
         };
       })

@@ -22,7 +22,7 @@ export interface EventMessageDocument extends Document {
   createdAt: number;
   /** Set on edit - text itself is overwritten in place (no history kept). */
   editedAt?: number;
-  /** Soft-delete marker - text is blanked and `deleted:true` is surfaced to
+  /** Soft-delete marker - text is blanked and `isDeleted:true` is surfaced to
    * every reader as soon as this is set (see EventChatService.hydrate),
    * rather than removing the row outright, so a reply quoting this message
    * still has something to show. */

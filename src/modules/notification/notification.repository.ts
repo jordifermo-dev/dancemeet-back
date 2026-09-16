@@ -21,7 +21,7 @@ export class NotificationRepository {
     return handleDbOperation(this.resourceName, 'create', async () => {
       const createdDocument = await this.notificationModel.create({
         ...notificationData,
-        read: false,
+        isRead: false,
         createdAt: Date.now(),
       });
       return mapNotificationToDto(createdDocument);
@@ -43,7 +43,7 @@ export class NotificationRepository {
 
   async countUnread(userId: string): Promise<number> {
     return handleDbOperation(this.resourceName, 'countUnread', async () => {
-      return this.notificationModel.countDocuments({ userId, read: false });
+      return this.notificationModel.countDocuments({ userId, isRead: false });
     });
   }
 
@@ -53,7 +53,7 @@ export class NotificationRepository {
         throw new InvalidIdException(this.resourceName, id);
       }
       const updatedDocument = await this.notificationModel.findByIdAndUpdate(id, {
-        $set: { read: true },
+        $set: { isRead: true },
       });
       return !!updatedDocument;
     });
@@ -65,7 +65,7 @@ export class NotificationRepository {
         throw new InvalidIdException(this.resourceName, id);
       }
       const updatedDocument = await this.notificationModel.findByIdAndUpdate(id, {
-        $set: { read: false },
+        $set: { isRead: false },
       });
       return !!updatedDocument;
     });
@@ -73,7 +73,7 @@ export class NotificationRepository {
 
   async markAllRead(userId: string): Promise<void> {
     await handleDbOperation(this.resourceName, 'markAllRead', async () => {
-      await this.notificationModel.updateMany({ userId, read: false }, { $set: { read: true } });
+      await this.notificationModel.updateMany({ userId, isRead: false }, { $set: { isRead: true } });
     });
   }
 }

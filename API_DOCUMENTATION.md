@@ -44,7 +44,7 @@ Response: 201 Created
   "email": "john@example.com",
   ...
   "followerId": [],
-  "followingId": []
+  "followingIds": []
 }
 ```
 
@@ -533,7 +533,7 @@ Response: 200 OK
   "notificationsEnabled": "boolean",
   "disciplineIds": "string[]",
   "followerId": "string[] (computed from Followers)",
-  "followingId": "string[] (computed from Followers)",
+  "followingIds": "string[] (computed from Followers)",
   "createdAt": "number (timestamp)",
   "updatedAt": "number (timestamp, optional)",
   "lastLoginAt": "number (timestamp, optional)"

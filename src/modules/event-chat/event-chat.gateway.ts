@@ -169,7 +169,7 @@ export class EventChatGateway implements OnGatewayInit, OnGatewayConnection, OnG
     }
   }
 
-  /** A "deleted" message is just a message whose `deleted` flag flipped -
+  /** A "deleted" message is just a message whose `isDeleted` flag flipped -
    * broadcast on the same `message-updated` event as an edit, rather than a
    * separate event name/frontend code path. */
   @SubscribeMessage('delete-message')

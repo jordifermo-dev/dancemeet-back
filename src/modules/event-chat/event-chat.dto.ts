@@ -48,7 +48,7 @@ export class EventMessageWithSenderDto {
   editedAt?: number;
   /** Derived from the stored deletedAt - readers only ever see this
    * boolean, never the timestamp (see EventChatService.hydrate). */
-  deleted!: boolean;
+  isDeleted!: boolean;
   replyTo?: EventMessageQuoteDto | null;
   attachedPhoto?: EventMessageAttachedPhotoDto | null;
 }
@@ -60,7 +60,7 @@ export class EventMessageQuoteDto {
   id!: string;
   senderName!: string;
   text!: string;
-  deleted!: boolean;
+  isDeleted!: boolean;
 }
 
 export class EventMessageAttachedPhotoDto {

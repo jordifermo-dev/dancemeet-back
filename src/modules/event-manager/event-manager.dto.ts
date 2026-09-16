@@ -7,6 +7,12 @@ const msg = (rule: string) => i18nValidationMessage(`errors.validation.${rule}`)
 export const EVENT_MANAGER_ROLES: EventManagerRole[] = ['attendee', 'manager'];
 export const CHAT_HISTORY_ACCESS_OPTIONS: ChatHistoryAccess[] = ['full', 'fromJoin'];
 
+/** The raw, un-hydrated repository row - just ids and role/status, no
+ * profile info. EventManagerDetailedDto below is the hydrated counterpart
+ * (same relationship, plus the invitee's name/photo/etc.) - the `Detailed`
+ * suffix exists specifically to distinguish it from this class, not for
+ * consistency with FollowUserDto/EventAttendeeDto elsewhere (neither of
+ * those has a plain, non-hydrated sibling of its own to be confused with). */
 export class EventManagerDto {
   id?: string;
   eventId!: string;

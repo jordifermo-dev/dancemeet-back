@@ -29,8 +29,8 @@ export interface UserDocument extends Document {
   showLocation: boolean;
   createdAt: number;
   updatedAt?: number;
-  followedId: string[];
-  followingId: string[];
+  followedIds: string[];
+  followingIds: string[];
   blockedIds: string[];
   fcmTokens: string[];
 }
@@ -79,8 +79,8 @@ export const UserSchema = new Schema<UserDocument>(
     showLocation: { type: Boolean, required: true, default: false },
     createdAt: { type: Number, default: () => Date.now() },
     updatedAt: { type: Number },
-    followedId: { type: [String], default: [] },
-    followingId: { type: [String], default: [] },
+    followedIds: { type: [String], default: [] },
+    followingIds: { type: [String], default: [] },
     blockedIds: { type: [String], default: [] },
     fcmTokens: { type: [String], default: [] },
   },

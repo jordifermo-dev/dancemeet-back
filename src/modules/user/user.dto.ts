@@ -54,8 +54,8 @@ export class UserDto {
   showLocation!: boolean;
   createdAt!: number;
   updatedAt?: number;
-  followedId!: string[];
-  followingId!: string[];
+  followedIds!: string[];
+  followingIds!: string[];
   blockedIds!: string[];
   fcmTokens!: string[];
 }

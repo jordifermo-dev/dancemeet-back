@@ -242,7 +242,7 @@ export function mapNotificationToDto(document: any): NotificationDto {
     title: document.title,
     body: document.body,
     data: document.data,
-    read: document.read ?? false,
+    isRead: document.isRead ?? false,
     createdAt: document.createdAt,
   };
 }
@@ -279,8 +279,8 @@ export function mapUserToDto(document: any): UserDto {
     showLocation: document.showLocation ?? false,
     createdAt: document.createdAt,
     updatedAt: document.updatedAt,
-    followedId: document.followedId ?? [],
-    followingId: document.followingId ?? [],
+    followedIds: document.followedIds ?? [],
+    followingIds: document.followingIds ?? [],
     blockedIds: document.blockedIds ?? [],
     fcmTokens: document.fcmTokens ?? [],
   };

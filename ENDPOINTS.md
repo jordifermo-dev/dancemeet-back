@@ -26,7 +26,7 @@
 
 **Auto-Populated Fields:**
 - `followerId`: Array of users who follow this user
-- `followingId`: Array of users this user is following
+- `followingIds`: Array of users this user is following
 
 ---
 

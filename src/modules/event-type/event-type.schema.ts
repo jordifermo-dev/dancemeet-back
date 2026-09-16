@@ -11,7 +11,7 @@ export const EventTypeSchema = new Schema<EventTypeDocument>(
     createdAt: { type: Number, default: () => Date.now() },
   },
   {
-    collection: 'eventTypes',
+    collection: 'event_types',
     versionKey: false,
   },
 );
